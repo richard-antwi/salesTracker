@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, UserPlus, Shield, Phone, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { isValidGhanaPhone } from '@/lib/validation';
 
 interface AdminUser {
   id: string;
@@ -21,10 +22,13 @@ export default function AdminUsersPage() {
   // Form State
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const phoneError = phoneTouched && !isValidGhanaPhone(phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
 
   async function fetchAdminUsers() {
     try {
@@ -46,8 +50,15 @@ export default function AdminUsersPage() {
 
   async function handleCreateAdmin(e: React.FormEvent) {
     e.preventDefault();
+    setPhoneTouched(true);
+
     if (!name || !phone || !password) {
       setError('Please fill in all required fields (Name, Phone, Password).');
+      return;
+    }
+
+    if (!isValidGhanaPhone(phone)) {
+      setError('Phone number is invalid. Enter a 10-digit Ghana mobile number starting with 0 (e.g. 0244123456).');
       return;
     }
 
@@ -70,6 +81,7 @@ export default function AdminUsersPage() {
       setSuccess(`Admin account created successfully for ${data.user.name}`);
       setName('');
       setPhone('');
+      setPhoneTouched(false);
       setEmail('');
       setPassword('');
       await fetchAdminUsers();
@@ -132,9 +144,19 @@ export default function AdminUsersPage() {
                 required
                 placeholder="e.g. 0244123456"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (!phoneTouched) setPhoneTouched(true);
+                }}
+                onBlur={() => setPhoneTouched(true)}
+                className={`w-full bg-white border rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none ${phoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : 'border-slate-200'}`}
               />
+              {phoneError && (
+                <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 shrink-0" />
+                  {phoneError}
+                </p>
+              )}
             </div>
 
             <div>

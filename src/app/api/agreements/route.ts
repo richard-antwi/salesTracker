@@ -99,6 +99,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing required agreement or vehicle fields' }, { status: 400 });
     }
 
+    // Server-side Ghana phone number validation (10 digits starting with 0)
+    const { isValidGhanaPhone } = await import('@/lib/validation');
+    if (!isValidGhanaPhone(ownerPhone)) {
+      return NextResponse.json({ error: 'Owner phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0244123456)' }, { status: 400 });
+    }
+
+    if (!isValidGhanaPhone(hirerPhone)) {
+      return NextResponse.json({ error: 'Hirer phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0244123456)' }, { status: 400 });
+    }
+
+    if (guarantor1Phone && !isValidGhanaPhone(guarantor1Phone)) {
+      return NextResponse.json({ error: 'Guarantor 1 phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0208889900)' }, { status: 400 });
+    }
+
+    if (guarantor2Phone && !isValidGhanaPhone(guarantor2Phone)) {
+      return NextResponse.json({ error: 'Guarantor 2 phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0554443322)' }, { status: 400 });
+    }
+
     // 1. Find or Create Rider User Account
     let hirer = await prisma.user.findUnique({
       where: { phone: hirerPhone },
