@@ -61,18 +61,32 @@ export function validateFileMagicBytes(buffer: Buffer): { valid: boolean; detect
   };
 }
 
-// 1. Local Disk Storage Implementation (for offline fallback)
+// 1. Local Disk Storage Implementation (for offline local development only)
 export class LocalStorageProvider implements StorageProvider {
   private uploadDir: string;
 
   constructor() {
     this.uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(this.uploadDir)) {
-      fs.mkdirSync(this.uploadDir, { recursive: true });
+  }
+
+  private ensureDir() {
+    try {
+      if (!fs.existsSync(this.uploadDir)) {
+        fs.mkdirSync(this.uploadDir, { recursive: true });
+      }
+    } catch (err) {
+      console.warn('LocalStorageProvider: Unable to create local directory:', err);
     }
   }
 
   async uploadFile(fileBuffer: Buffer, originalFileName: string): Promise<StorageResult> {
+    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'SUPABASE_SERVICE_ROLE_KEY is required for document uploads in Vercel production. Please configure SUPABASE_SERVICE_ROLE_KEY in Vercel Environment Variables.'
+      );
+    }
+
+    this.ensureDir();
     const ext = path.extname(originalFileName) || '.bin';
     const sanitizedBase = path.basename(originalFileName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
     const uniqueName = `${Date.now()}_${sanitizedBase}${ext}`;
@@ -110,10 +124,16 @@ export class SupabaseStorageProvider implements StorageProvider {
 
   constructor() {
     this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jhxctmcjbjkicgrlzftr.supabase.co';
-    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    this.serviceRoleKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
   }
 
   async uploadFile(fileBuffer: Buffer, originalFileName: string): Promise<StorageResult> {
+    if (!this.serviceRoleKey) {
+      throw new Error(
+        'SUPABASE_SERVICE_ROLE_KEY environment variable is missing on serverless runtime. Add SUPABASE_SERVICE_ROLE_KEY in Vercel Project Settings > Environment Variables.'
+      );
+    }
+
     const ext = path.extname(originalFileName) || '.bin';
     const sanitizedBase = path.basename(originalFileName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
     const uniqueName = `vault/${Date.now()}_${sanitizedBase}${ext}`;
@@ -135,7 +155,7 @@ export class SupabaseStorageProvider implements StorageProvider {
     if (!response.ok) {
       const errText = await response.text();
       console.error('Supabase Storage Upload Error:', response.status, errText);
-      throw new Error(`Supabase Storage upload failed: ${response.statusText} (${errText})`);
+      throw new Error(`Supabase Storage upload failed (${response.status}): ${errText}`);
     }
 
     return {
@@ -146,6 +166,7 @@ export class SupabaseStorageProvider implements StorageProvider {
 
   async deleteFile(fileUrl: string): Promise<boolean> {
     try {
+      if (!this.serviceRoleKey) return false;
       const match = fileUrl.match(/path=([^&]+)/);
       const filePath = match ? decodeURIComponent(match[1]) : fileUrl;
 
@@ -167,7 +188,8 @@ export class SupabaseStorageProvider implements StorageProvider {
 
 // Storage Facade Factory
 export function getStorageProvider(): StorageProvider {
-  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (serviceKey || process.env.VERCEL || process.env.NODE_ENV === 'production') {
     return new SupabaseStorageProvider();
   }
   return new LocalStorageProvider();
