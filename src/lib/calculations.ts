@@ -27,9 +27,15 @@ export function calculateLateFeePlaceholder(daysOverdue: number, installmentAmou
   return 0;
 }
 
+function toSafeNumber(val: unknown): number {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const parsed = parseFloat(String(val));
+  return isNaN(parsed) ? 0 : parsed;
+}
+
 export function formatCedi(amount: unknown): string {
-  const numeric = typeof amount === 'number' ? amount : Number(amount || 0);
-  const safeNum = isNaN(numeric) ? 0 : numeric;
+  const safeNum = toSafeNumber(amount);
   return `${CONFIG.CURRENCY_SYMBOL} ${safeNum.toLocaleString('en-GH', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -48,12 +54,12 @@ export function calculateAgreementSummary(agreement: {
   const startDate = new Date(agreement.startDate);
   const today = new Date();
 
-  const hirePurchasePrice = Number(agreement.hirePurchasePrice || 0);
-  const installmentAmount = Number(agreement.installmentAmount || 0);
+  const hirePurchasePrice = toSafeNumber(agreement.hirePurchasePrice);
+  const installmentAmount = toSafeNumber(agreement.installmentAmount);
 
   // Active (non-voided) payments sum
   const activePayments = (agreement.payments || []).filter((p) => !p.voided);
-  const totalPaid = activePayments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const totalPaid = activePayments.reduce((sum, p) => sum + toSafeNumber(p.amount), 0);
 
   // Balance & % Complete
   const rawBalance = hirePurchasePrice - totalPaid;
