@@ -65,8 +65,9 @@ export async function GET(
     return NextResponse.json({
       agreement,
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching agreement detail:', error);
-    return NextResponse.json({ error: 'Failed to fetch agreement' }, { status: 500 });
+    const errorMessage = error instanceof Error ? error.message : 'Failed to fetch agreement';
+    return NextResponse.json({ error: errorMessage, stack: error?.stack }, { status: 500 });
   }
 }
