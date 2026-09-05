@@ -8,7 +8,6 @@ export async function GET(request: Request) {
   try {
     const authHeader = request.headers.get('authorization');
     if (CONFIG.CRON_SECRET && authHeader !== `Bearer ${CONFIG.CRON_SECRET}`) {
-      // Allow call without header in development for easy manual testing
       if (process.env.NODE_ENV === 'production') {
         return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
       }
@@ -17,6 +16,7 @@ export async function GET(request: Request) {
     const agreements = await prisma.agreement.findMany({
       where: { status: 'ACTIVE' },
       include: {
+        organization: true,
         hirer: true,
         vehicle: true,
         payments: true,
@@ -54,8 +54,10 @@ export async function GET(request: Request) {
         summary.statusBadge.label === 'Overdue' ||
         summary.statusBadge.label === 'Severely Overdue'
       ) {
+        // Send overdue notification to organization's contact email or fallback to global admin email
+        const targetAdminEmail = agr.organization?.contactEmail || CONFIG.ADMIN_EMAIL;
         await notifications.sendOverdueAlert(
-          CONFIG.ADMIN_EMAIL,
+          targetAdminEmail,
           agr.hirer.name,
           agr.vehicle.registrationNo,
           summary.statusBadge.daysOverdue,

@@ -30,8 +30,13 @@ export async function GET(
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
     }
 
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && agreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden access to this statement' }, { status: 403 });
+    }
+
     // Role security check: Rider can ONLY download their own statement
-    if (session.role !== 'ADMIN' && agreement.hirerId !== session.userId) {
+    if (session.role === 'RIDER' && agreement.hirerId !== session.userId) {
       return NextResponse.json({ error: 'Forbidden access to this statement' }, { status: 403 });
     }
 

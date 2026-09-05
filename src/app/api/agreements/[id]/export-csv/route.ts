@@ -30,6 +30,11 @@ export async function GET(
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
     }
 
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && agreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     if (session.role === 'RIDER' && agreement.hirerId !== session.userId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }

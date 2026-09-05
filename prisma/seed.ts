@@ -168,7 +168,39 @@ async function main() {
     });
   }
 
-  // 8. Create Organization #2 for Data Isolation Testing
+  // 8. Create Org #1 Document
+  const existingDoc = await prisma.document.findFirst({ where: { agreementId: agreement.id } });
+  if (!existingDoc) {
+    await prisma.document.create({
+      data: {
+        organizationId: org1.id,
+        agreementId: agreement.id,
+        type: 'GHANA_CARD',
+        fileName: 'ghanacard_kwesi.jpg',
+        fileUrl: `/api/agreements/documents/download?path=${encodeURIComponent('vault/ghanacard_kwesi.jpg')}`,
+        fileSize: 204800,
+        mimeType: 'image/jpeg',
+        uploadedBy: admin.name,
+      },
+    });
+  }
+
+  // 9. Create Org #1 StatusChangeLog
+  const existingLog = await prisma.statusChangeLog.findFirst({ where: { agreementId: agreement.id } });
+  if (!existingLog) {
+    await prisma.statusChangeLog.create({
+      data: {
+        organizationId: org1.id,
+        agreementId: agreement.id,
+        fromStatus: 'ACTIVE',
+        toStatus: 'ACTIVE',
+        reason: 'Initial agreement digitizing & verification',
+        changedBy: admin.name,
+      },
+    });
+  }
+
+  // 10. Create Organization #2 for Data Isolation Testing
   const org2 = await prisma.organization.upsert({
     where: { slug: 'accra-logistics-fleet' },
     update: {},
@@ -195,16 +227,22 @@ async function main() {
     },
   });
 
-  const org2Vehicle = await prisma.vehicle.create({
-    data: {
-      organizationId: org2.id,
-      makeModel: 'TVS King Deluxe 200',
-      registrationNo: 'GW-9900-24',
-      chassisNo: 'TVS9988776655',
-      engineNo: 'ENG99887766',
-      colorYear: 'Blue / 2024',
-    },
+  const existingOrg2Vehicle = await prisma.vehicle.findFirst({
+    where: { registrationNo: 'GW-9900-24', organizationId: org2.id },
   });
+
+  if (!existingOrg2Vehicle) {
+    await prisma.vehicle.create({
+      data: {
+        organizationId: org2.id,
+        makeModel: 'TVS King Deluxe 200',
+        registrationNo: 'GW-9900-24',
+        chassisNo: 'TVS9988776655',
+        engineNo: 'ENG99887766',
+        colorYear: 'Blue / 2024',
+      },
+    });
+  }
 
   console.log('✅ Multi-tenant seeding completed successfully!');
 }
