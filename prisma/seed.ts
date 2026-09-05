@@ -39,17 +39,17 @@ async function main() {
     },
   });
 
-  // 3. Create Org #1 Admin
+  // 3. Create Org #1 Admin & Platform SUPER_ADMIN
   const admin = await prisma.user.upsert({
     where: { phone: '0240000000' },
-    update: { organizationId: org1.id },
+    update: { organizationId: org1.id, role: 'SUPER_ADMIN' },
     create: {
       organizationId: org1.id,
       name: 'Emmanuel Osei (Owner)',
       phone: '0240000000',
       email: 'admin@workandpay.gh',
       passwordHash: adminPasswordHash,
-      role: 'ADMIN',
+      role: 'SUPER_ADMIN',
       mustChangePassword: false,
     },
   });

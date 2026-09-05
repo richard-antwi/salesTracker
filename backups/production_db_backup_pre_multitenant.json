@@ -1,0 +1,193 @@
+{
+  "exportedAt": "2026-09-05T20:19:15.902Z",
+  "sourceDatabase": "salestrackergh_production (Supabase jhxctmcjbjkicgrlzftr)",
+  "tables": {
+    "User": [
+      {
+        "id": "cmtokdlya0000vlwcf393r2jv",
+        "name": "Emmanuel Osei (Owner)",
+        "phone": "0240000000",
+        "email": "admin@workandpay.gh",
+        "passwordHash": "$2a$10$DeZIQPiHmbeGm2/j1x9qfOhCp.fTmoEwhLJ12GcH/z96UL2FKDStu",
+        "role": "ADMIN",
+        "mustChangePassword": false,
+        "createdAt": "2026-09-05T15:55:13.377Z"
+      },
+      {
+        "id": "cmtokdn1u0001vlwcqng93h3z",
+        "name": "Richard Antwi",
+        "phone": "0244112233",
+        "email": "richardantwi8888@gmail.com",
+        "passwordHash": "$2a$10$DeZIQPiHmbeGm2/j1x9qfOhCp.fTmoEwhLJ12GcH/z96UL2FKDStu",
+        "role": "ADMIN",
+        "mustChangePassword": false,
+        "createdAt": "2026-09-05T15:55:14.802Z"
+      },
+      {
+        "id": "cmtokekdz0002vlvw1jlg921z",
+        "name": "Kwesi Mensah",
+        "phone": "0241112233",
+        "email": "kwesi@workandpay.gh",
+        "passwordHash": "$2a$10$Ou/c5Ck9Zawl4Zt2em34beJ5lCYoFtydHS5aGFPwJf8UB6Zim0vHq",
+        "role": "RIDER",
+        "mustChangePassword": false,
+        "createdAt": "2026-09-05T15:55:58.007Z"
+      },
+      {
+        "id": "cmtokelhx0003vlvwha6lyouf",
+        "name": "Kofi Annan",
+        "phone": "0205556677",
+        "email": "kofi@workandpay.gh",
+        "passwordHash": "$2a$10$Ou/c5Ck9Zawl4Zt2em34beJ5lCYoFtydHS5aGFPwJf8UB6Zim0vHq",
+        "role": "RIDER",
+        "mustChangePassword": true,
+        "createdAt": "2026-09-05T15:55:59.446Z"
+      },
+      {
+        "id": "cmtom3vgy0000l404wllnwm4x",
+        "name": "Richard Antwi",
+        "phone": "0592303054",
+        "email": "richardrichfavourantwi88@gmail.com",
+        "passwordHash": "$2a$10$OAQr6JWA/swj9jFWr9opNeuEuSLLG8RMY/i5nZpuHutf1C1ZBSh2C",
+        "role": "ADMIN",
+        "mustChangePassword": false,
+        "createdAt": "2026-09-05T16:43:38.386Z"
+      }
+    ],
+    "Vehicle": [
+      {
+        "id": "cmtokemlv0004vlvwtt6hokxg",
+        "makeModel": "Honda Ace 125",
+        "registrationNo": "GT-9911-24",
+        "chassisNo": "HA125-99881122",
+        "engineNo": "ENG-HA-4455",
+        "colorYear": "Black / 2024"
+      },
+      {
+        "id": "cmtokenpx0005vlvwhcl0sgq0",
+        "makeModel": "Bajaj Boxer BM 150",
+        "registrationNo": "GT-4820-24",
+        "chassisNo": "MD2A18AZ6PW129481",
+        "engineNo": "DUXW82194",
+        "colorYear": "Red / 2024"
+      }
+    ],
+    "Agreement": [
+      {
+        "id": "cmtokeplq0007vlvwvhq1bolv",
+        "ownerName": "Emmanuel Osei (Owner)",
+        "ownerPhone": "0240000000",
+        "hirerId": "cmtokekdz0002vlvw1jlg921z",
+        "guarantor1Name": "Joseph Kwarteng",
+        "guarantor1Phone": "0208889900",
+        "guarantor2Name": "Abena Serwaa",
+        "guarantor2Phone": "0554443322",
+        "vehicleId": "cmtokemlv0004vlvwtt6hokxg",
+        "cashPrice": "10000.00",
+        "hirePurchasePrice": "15000.00",
+        "installmentAmount": "300.00",
+        "frequency": "WEEKLY",
+        "totalInstallments": 50,
+        "startDate": "2026-07-25T00:00:00.000Z",
+        "status": "ACTIVE",
+        "createdAt": "2026-09-05T15:56:04.767Z"
+      },
+      {
+        "id": "cmtokerqf000cvlvw7wtqt05g",
+        "ownerName": "Emmanuel Osei (Owner)",
+        "ownerPhone": "0240000000",
+        "hirerId": "cmtokelhx0003vlvwha6lyouf",
+        "guarantor1Name": "Yaw Boateng",
+        "guarantor1Phone": "0243334455",
+        "guarantor2Name": null,
+        "guarantor2Phone": null,
+        "vehicleId": "cmtokenpx0005vlvwhcl0sgq0",
+        "cashPrice": "11000.00",
+        "hirePurchasePrice": "16000.00",
+        "installmentAmount": "350.00",
+        "frequency": "WEEKLY",
+        "totalInstallments": 46,
+        "startDate": "2026-08-05T00:00:00.000Z",
+        "status": "ACTIVE",
+        "createdAt": "2026-09-05T15:56:07.527Z"
+      }
+    ],
+    "Payment": [
+      {
+        "id": "cmtokeqi30008vlvw71ycw2l1",
+        "agreementId": "cmtokeplq0007vlvwvhq1bolv",
+        "amount": "300.00",
+        "datePaid": "2026-08-01T10:00:00.000Z",
+        "channel": "MOMO",
+        "reference": "MM-948102",
+        "note": "Week 1 installment via MTN MoMo",
+        "recordedBy": "cmtokdlya0000vlwcf393r2jv",
+        "voided": false,
+        "createdAt": "2026-09-05T15:56:05.931Z"
+      },
+      {
+        "id": "cmtokeqi30009vlvwivkzh8yv",
+        "agreementId": "cmtokeplq0007vlvwvhq1bolv",
+        "amount": "300.00",
+        "datePaid": "2026-08-08T14:30:00.000Z",
+        "channel": "CASH",
+        "reference": "REC-0012",
+        "note": "Week 2 cash payment at office",
+        "recordedBy": "cmtokdlya0000vlwcf393r2jv",
+        "voided": false,
+        "createdAt": "2026-09-05T15:56:05.931Z"
+      },
+      {
+        "id": "cmtokeqi3000avlvwqlr6hwqe",
+        "agreementId": "cmtokeplq0007vlvwvhq1bolv",
+        "amount": "300.00",
+        "datePaid": "2026-08-15T11:15:00.000Z",
+        "channel": "MOMO",
+        "reference": "MM-950211",
+        "note": "Week 3 payment via Telecel Cash",
+        "recordedBy": "cmtokdlya0000vlwcf393r2jv",
+        "voided": false,
+        "createdAt": "2026-09-05T15:56:05.931Z"
+      },
+      {
+        "id": "cmtokeshp000evlvwzrx3bcmn",
+        "agreementId": "cmtokerqf000cvlvw7wtqt05g",
+        "amount": "350.00",
+        "datePaid": "2026-08-12T09:00:00.000Z",
+        "channel": "MOMO",
+        "reference": "MM-112233",
+        "note": "Initial installment",
+        "recordedBy": "cmtokdlya0000vlwcf393r2jv",
+        "voided": false,
+        "createdAt": "2026-09-05T15:56:08.509Z"
+      },
+      {
+        "id": "cmtokfews0001vlxw9l9p86io",
+        "agreementId": "cmtokeplq0007vlvwvhq1bolv",
+        "amount": "300.00",
+        "datePaid": "2026-09-05T15:56:37.560Z",
+        "channel": "MOMO",
+        "reference": "MM-VERIFY-POSTGRES",
+        "note": "Verified payment on Supabase Postgres database",
+        "recordedBy": "Admin Verification",
+        "voided": false,
+        "createdAt": "2026-09-05T15:56:37.564Z"
+      }
+    ],
+    "StatusChangeLog": [],
+    "Document": [
+      {
+        "id": "cmtopfguc0001l2043vfffq8w",
+        "agreementId": "cmtokeplq0007vlvwvhq1bolv",
+        "type": "GHANA_CARD",
+        "fileName": "ghanacard.jpg",
+        "fileUrl": "/api/agreements/documents/download?path=vault%2F1788632197685_ghanacard.jpg",
+        "fileSize": 68024,
+        "mimeType": "image/jpeg",
+        "uploadedBy": "Richard Antwi",
+        "note": null,
+        "createdAt": "2026-09-05T18:16:38.148Z"
+      }
+    ]
+  }
+}

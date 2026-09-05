@@ -23,4 +23,5 @@ export const CONFIG = {
 
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@workandpay.gh',
   CRON_SECRET: process.env.CRON_SECRET || 'work_and_pay_cron_secret_2026',
+  APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://salestrackergh.vercel.app',
 };

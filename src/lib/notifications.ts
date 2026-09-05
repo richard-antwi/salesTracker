@@ -387,6 +387,33 @@ export class NotificationService {
       }
     }
   }
+
+  // Trigger 6: Organization Access Approved (Sent to Fleet Owner Admin)
+  async sendOrganizationApprovalNotification(
+    org: { name: string; contactEmail: string },
+    adminName: string
+  ) {
+    const textMsg = `Hello ${adminName}, your access request for "${org.name}" has been APPROVED! You may now log in to your Work & Pay dashboard.`;
+    const htmlMsg = `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #bbf7d0; border-radius: 12px; padding: 24px; background: #f0fdf4;">
+        <h2 style="color: #15803d; margin-top: 0;">🎉 Access Request Approved!</h2>
+        <p>Hello <strong>${adminName}</strong>,</p>
+        <p>Great news! Your access request for organization <strong>${org.name}</strong> has been approved by the platform operator.</p>
+        <p>You can now log in to your Work & Pay dashboard using your email address (<strong>${org.contactEmail}</strong>) or phone number and your password.</p>
+        <p style="margin-top: 24px;">
+          <a href="${CONFIG.APP_URL}/login" style="background: #059669; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Log In Now</a>
+        </p>
+        <p style="color: #166534; font-size: 13px; margin-top: 24px;">Welcome to Work & Pay!</p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to: org.contactEmail,
+      subject: `🎉 Organization Access Approved: ${org.name} - Work & Pay`,
+      html: htmlMsg,
+      text: textMsg,
+    });
+  }
 }
 
 export const notifications = new NotificationService();

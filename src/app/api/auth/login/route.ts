@@ -15,6 +15,9 @@ export async function POST(request: Request) {
       where: {
         OR: [{ phone: identifier }, { email: identifier }],
       },
+      include: {
+        organization: true,
+      },
     });
 
     if (!user) {
@@ -24,6 +27,28 @@ export async function POST(request: Request) {
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    // Organization approval status check for non-Super Admin users
+    if (user.role !== 'SUPER_ADMIN' && user.organization) {
+      if (user.organization.status === 'PENDING') {
+        return NextResponse.json(
+          { error: 'Your organization access request is pending approval. Please wait for platform administrator approval.' },
+          { status: 403 }
+        );
+      }
+      if (user.organization.status === 'REJECTED') {
+        return NextResponse.json(
+          { error: 'Your organization access request was not approved. Please contact platform support.' },
+          { status: 403 }
+        );
+      }
+      if (user.organization.status === 'SUSPENDED') {
+        return NextResponse.json(
+          { error: 'Your organization access has been suspended. Please contact platform support.' },
+          { status: 403 }
+        );
+      }
     }
 
     const sessionPayload: UserSession = {

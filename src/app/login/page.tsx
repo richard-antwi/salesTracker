@@ -42,7 +42,9 @@ export default function LoginPage() {
       }
 
       // Redirect based on role
-      if (data.user?.role === 'ADMIN') {
+      if (data.user?.role === 'SUPER_ADMIN') {
+        router.push('/super-admin');
+      } else if (data.user?.role === 'ADMIN') {
         router.push('/admin/dashboard');
       } else {
         router.push('/rider');
