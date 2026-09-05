@@ -1,0 +1,127 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                 String      @id @default(cuid())
+  name               String
+  phone              String      @unique
+  email              String?     @unique
+  passwordHash       String
+  role               Role        @default(RIDER)
+  mustChangePassword Boolean     @default(false)
+  createdAt          DateTime    @default(now())
+  agreementsAsHirer  Agreement[] @relation("HirerAgreements")
+}
+
+enum Role {
+  ADMIN
+  RIDER
+  GUARANTOR
+}
+
+model Vehicle {
+  id             String     @id @default(cuid())
+  makeModel      String
+  registrationNo String     @unique
+  chassisNo      String?
+  engineNo       String?
+  colorYear      String?
+  agreement      Agreement?
+}
+
+model Agreement {
+  id                String            @id @default(cuid())
+  ownerName         String
+  ownerPhone        String
+  hirer             User              @relation("HirerAgreements", fields: [hirerId], references: [id])
+  hirerId           String
+  guarantor1Name    String?
+  guarantor1Phone   String?
+  guarantor2Name    String?
+  guarantor2Phone   String?
+  vehicle           Vehicle           @relation(fields: [vehicleId], references: [id])
+  vehicleId         String            @unique
+
+  cashPrice         Decimal           @db.Decimal(12, 2)
+  hirePurchasePrice Decimal           @db.Decimal(12, 2)
+  installmentAmount Decimal           @db.Decimal(12, 2)
+  frequency         Frequency         @default(WEEKLY)
+  totalInstallments Int
+  startDate         DateTime
+  status            AgreementStatus   @default(ACTIVE)
+
+  payments          Payment[]
+  statusLogs        StatusChangeLog[]
+  documents         Document[]
+  createdAt         DateTime          @default(now())
+}
+
+enum Frequency {
+  WEEKLY
+  MONTHLY
+}
+
+enum AgreementStatus {
+  ACTIVE
+  COMPLETED
+  DEFAULTED
+  REPOSSESSED
+}
+
+model Payment {
+  id          String         @id @default(cuid())
+  agreement   Agreement      @relation(fields: [agreementId], references: [id])
+  agreementId String
+  amount      Decimal        @db.Decimal(12, 2)
+  datePaid    DateTime
+  channel     PaymentChannel @default(MOMO)
+  reference   String?
+  note        String?
+  recordedBy  String
+  voided      Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+}
+
+enum PaymentChannel {
+  MOMO
+  CASH
+  BANK
+}
+
+model StatusChangeLog {
+  id          String          @id @default(cuid())
+  agreement   Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  agreementId String
+  fromStatus  AgreementStatus
+  toStatus    AgreementStatus
+  reason      String
+  changedBy   String
+  createdAt   DateTime        @default(now())
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  agreement   Agreement    @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  agreementId String
+  type        DocumentType @default(OTHER)
+  fileName    String
+  fileUrl     String
+  fileSize    Int
+  mimeType    String
+  uploadedBy  String
+  note        String?
+  createdAt   DateTime     @default(now())
+}
+
+enum DocumentType {
+  GHANA_CARD
+  PASSPORT_PHOTO
+  SIGNED_CONTRACT
+  OTHER
+}
