@@ -7,36 +7,70 @@ generator client {
   provider = "prisma-client-js"
 }
 
-model User {
-  id                 String      @id @default(cuid())
-  name               String
-  phone              String      @unique
-  email              String?     @unique
-  passwordHash       String
-  role               Role        @default(RIDER)
-  mustChangePassword Boolean     @default(false)
-  createdAt          DateTime    @default(now())
-  agreementsAsHirer  Agreement[] @relation("HirerAgreements")
-}
-
 enum Role {
+  SUPER_ADMIN
   ADMIN
   RIDER
   GUARANTOR
 }
 
+enum OrgStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model Organization {
+  id           String     @id @default(cuid())
+  name         String
+  slug         String     @unique
+  status       OrgStatus  @default(PENDING)
+  contactEmail String
+  contactPhone String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  users        User[]
+  vehicles     Vehicle[]
+  agreements   Agreement[]
+  payments     Payment[]
+  statusLogs   StatusChangeLog[]
+  documents    Document[]
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id])
+  name               String
+  phone              String        @unique
+  email              String?       @unique
+  passwordHash       String
+  role               Role          @default(RIDER)
+  mustChangePassword Boolean       @default(false)
+  createdAt          DateTime      @default(now())
+  agreementsAsHirer  Agreement[]   @relation("HirerAgreements")
+}
+
 model Vehicle {
-  id             String     @id @default(cuid())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
   makeModel      String
-  registrationNo String     @unique
+  registrationNo String
   chassisNo      String?
   engineNo       String?
   colorYear      String?
   agreement      Agreement?
+
+  @@unique([registrationNo, organizationId])
 }
 
 model Agreement {
   id                String            @id @default(cuid())
+  organizationId    String
+  organization      Organization      @relation(fields: [organizationId], references: [id])
   ownerName         String
   ownerPhone        String
   hirer             User              @relation("HirerAgreements", fields: [hirerId], references: [id])
@@ -75,17 +109,19 @@ enum AgreementStatus {
 }
 
 model Payment {
-  id          String         @id @default(cuid())
-  agreement   Agreement      @relation(fields: [agreementId], references: [id])
-  agreementId String
-  amount      Decimal        @db.Decimal(12, 2)
-  datePaid    DateTime
-  channel     PaymentChannel @default(MOMO)
-  reference   String?
-  note        String?
-  recordedBy  String
-  voided      Boolean        @default(false)
-  createdAt   DateTime       @default(now())
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id])
+  agreement      Agreement      @relation(fields: [agreementId], references: [id])
+  agreementId    String
+  amount         Decimal        @db.Decimal(12, 2)
+  datePaid       DateTime
+  channel        PaymentChannel @default(MOMO)
+  reference      String?
+  note           String?
+  recordedBy     String
+  voided         Boolean        @default(false)
+  createdAt      DateTime       @default(now())
 }
 
 enum PaymentChannel {
@@ -95,28 +131,32 @@ enum PaymentChannel {
 }
 
 model StatusChangeLog {
-  id          String          @id @default(cuid())
-  agreement   Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-  agreementId String
-  fromStatus  AgreementStatus
-  toStatus    AgreementStatus
-  reason      String
-  changedBy   String
-  createdAt   DateTime        @default(now())
+  id             String          @id @default(cuid())
+  organizationId String
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  agreement      Agreement       @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  agreementId    String
+  fromStatus     AgreementStatus
+  toStatus       AgreementStatus
+  reason         String
+  changedBy      String
+  createdAt      DateTime        @default(now())
 }
 
 model Document {
-  id          String       @id @default(cuid())
-  agreement   Agreement    @relation(fields: [agreementId], references: [id], onDelete: Cascade)
-  agreementId String
-  type        DocumentType @default(OTHER)
-  fileName    String
-  fileUrl     String
-  fileSize    Int
-  mimeType    String
-  uploadedBy  String
-  note        String?
-  createdAt   DateTime     @default(now())
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  agreement      Agreement    @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  agreementId    String
+  type           DocumentType @default(OTHER)
+  fileName       String
+  fileUrl        String
+  fileSize       Int
+  mimeType       String
+  uploadedBy     String
+  note           String?
+  createdAt      DateTime     @default(now())
 }
 
 enum DocumentType {

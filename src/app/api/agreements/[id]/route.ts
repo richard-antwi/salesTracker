@@ -39,8 +39,13 @@ export async function GET(
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
     }
 
+    // Organization data isolation check: Admins/Riders can only access agreements within their organization
+    if (session.role !== 'SUPER_ADMIN' && rawAgreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden access to this agreement' }, { status: 403 });
+    }
+
     // Role-based authorization check: Riders can ONLY see their own agreement
-    if (session.role !== 'ADMIN' && rawAgreement.hirerId !== session.userId) {
+    if (session.role === 'RIDER' && rawAgreement.hirerId !== session.userId) {
       return NextResponse.json({ error: 'Forbidden access to this agreement' }, { status: 403 });
     }
 

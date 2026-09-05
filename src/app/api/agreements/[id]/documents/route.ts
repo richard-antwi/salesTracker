@@ -17,11 +17,16 @@ export async function GET(
 
     const agreement = await prisma.agreement.findUnique({
       where: { id },
-      select: { hirerId: true },
+      select: { hirerId: true, organizationId: true },
     });
 
     if (!agreement) {
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
+    }
+
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && agreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     // Riders can only view documents for their own agreement
@@ -30,7 +35,7 @@ export async function GET(
     }
 
     const rawDocuments = await prisma.document.findMany({
-      where: { agreementId: id },
+      where: { agreementId: id, organizationId: agreement.organizationId },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -53,7 +58,7 @@ export async function POST(
 ) {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -65,6 +70,11 @@ export async function POST(
 
     if (!agreement) {
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
+    }
+
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && agreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden: Access denied to agreement outside organization' }, { status: 403 });
     }
 
     const formData = await request.formData();
@@ -105,9 +115,10 @@ export async function POST(
     const storageProvider = getStorageProvider();
     const { fileUrl, fileSize } = await storageProvider.uploadFile(buffer, file.name);
 
-    // 4. Create Document Record
+    // 4. Create Document Record with organizationId
     const rawDocument = await prisma.document.create({
       data: {
+        organizationId: agreement.organizationId,
         agreementId: id,
         type: documentType as any,
         fileName: file.name,

@@ -9,9 +9,10 @@ const AUTH_COOKIE_NAME = 'work_and_pay_session';
 
 export interface UserSession {
   userId: string;
+  organizationId: string | null;
   name: string;
   phone: string;
-  role: 'ADMIN' | 'RIDER' | 'GUARANTOR';
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'RIDER' | 'GUARANTOR';
   mustChangePassword?: boolean;
 }
 
@@ -69,16 +70,17 @@ export async function getCurrentSession(): Promise<UserSession | null> {
     // Verify user exists in database
     const dbUser = await prisma.user.findUnique({
       where: { id: payload.userId },
-      select: { id: true, name: true, phone: true, role: true, mustChangePassword: true },
+      select: { id: true, organizationId: true, name: true, phone: true, role: true, mustChangePassword: true },
     });
 
     if (!dbUser) return null;
 
     return {
       userId: dbUser.id,
+      organizationId: dbUser.organizationId,
       name: dbUser.name,
       phone: dbUser.phone,
-      role: dbUser.role as 'ADMIN' | 'RIDER' | 'GUARANTOR',
+      role: dbUser.role as 'SUPER_ADMIN' | 'ADMIN' | 'RIDER' | 'GUARANTOR',
       mustChangePassword: dbUser.mustChangePassword,
     };
   } catch {

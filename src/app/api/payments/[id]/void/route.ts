@@ -8,7 +8,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -19,6 +19,11 @@ export async function PATCH(
 
     if (!payment) {
       return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+    }
+
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && payment.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden: Cannot void payment outside organization' }, { status: 403 });
     }
 
     // Toggle or set voided to true (soft delete)

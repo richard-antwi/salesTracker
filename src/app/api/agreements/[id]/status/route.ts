@@ -9,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -37,6 +37,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
     }
 
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && existingAgreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden: Access denied to agreement outside organization' }, { status: 403 });
+    }
+
     const previousStatus = existingAgreement.status;
 
     // Execute status change & audit log in a transaction
@@ -47,6 +52,7 @@ export async function PATCH(
       }),
       prisma.statusChangeLog.create({
         data: {
+          organizationId: existingAgreement.organizationId,
           agreementId: id,
           fromStatus: previousStatus,
           toStatus: newStatus,

@@ -5,14 +5,23 @@ import { prisma } from '@/lib/db';
 export async function GET() {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
+    const whereClause: any = { role: 'ADMIN' };
+    if (session.role !== 'SUPER_ADMIN') {
+      if (!session.organizationId) {
+        return NextResponse.json({ error: 'Forbidden: No organization assigned' }, { status: 403 });
+      }
+      whereClause.organizationId = session.organizationId;
+    }
+
     const adminUsers = await prisma.user.findMany({
-      where: { role: 'ADMIN' },
+      where: whereClause,
       select: {
         id: true,
+        organizationId: true,
         name: true,
         phone: true,
         email: true,
@@ -32,8 +41,12 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+    }
+
+    if (!session.organizationId && session.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Forbidden: No organization assigned' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -59,6 +72,7 @@ export async function POST(request: Request) {
 
     const newUser = await prisma.user.create({
       data: {
+        organizationId: session.organizationId,
         name: name.trim(),
         phone: phone.trim(),
         email: email ? email.trim() : null,
@@ -68,6 +82,7 @@ export async function POST(request: Request) {
       },
       select: {
         id: true,
+        organizationId: true,
         name: true,
         phone: true,
         email: true,
