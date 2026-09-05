@@ -53,7 +53,7 @@ export async function GET(
 
     const agreement = {
       ...rawAgreement,
-      statusLogs: rawAgreement.statusLogs.map((log) => ({
+      statusLogs: (rawAgreement.statusLogs || []).map((log) => ({
         ...log,
         previousStatus: log.fromStatus,
         newStatus: log.toStatus,
