@@ -61,7 +61,7 @@ export function validateFileMagicBytes(buffer: Buffer): { valid: boolean; detect
   };
 }
 
-// Local Disk Storage Implementation (for local dev & SQLite setup)
+// 1. Local Disk Storage Implementation (for offline fallback)
 export class LocalStorageProvider implements StorageProvider {
   private uploadDir: string;
 
@@ -100,8 +100,75 @@ export class LocalStorageProvider implements StorageProvider {
   }
 }
 
+// 2. Hosted Supabase Storage Provider (Private Bucket REST API)
+// STRICT SECURITY REQUIREMENT: SUPABASE_SERVICE_ROLE_KEY is ONLY read in server-side Node.js code
+// and is NEVER exposed to the browser bundle or NEXT_PUBLIC_ variables.
+export class SupabaseStorageProvider implements StorageProvider {
+  private supabaseUrl: string;
+  private serviceRoleKey: string;
+  private bucketName = 'documents';
+
+  constructor() {
+    this.supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jhxctmcjbjkicgrlzftr.supabase.co';
+    this.serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  }
+
+  async uploadFile(fileBuffer: Buffer, originalFileName: string): Promise<StorageResult> {
+    const ext = path.extname(originalFileName) || '.bin';
+    const sanitizedBase = path.basename(originalFileName, ext).replace(/[^a-zA-Z0-9_-]/g, '_');
+    const uniqueName = `vault/${Date.now()}_${sanitizedBase}${ext}`;
+
+    const validation = validateFileMagicBytes(fileBuffer);
+    const contentType = validation.detectedMime || 'application/octet-stream';
+
+    // Direct REST API upload to Supabase Storage Private Bucket
+    const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${this.bucketName}/${uniqueName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.serviceRoleKey}`,
+        'Content-Type': contentType,
+        'x-upsert': 'true',
+      },
+      body: new Uint8Array(fileBuffer),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Supabase Storage Upload Error:', response.status, errText);
+      throw new Error(`Supabase Storage upload failed: ${response.statusText} (${errText})`);
+    }
+
+    return {
+      fileUrl: `/api/agreements/documents/download?path=${encodeURIComponent(uniqueName)}`,
+      fileSize: fileBuffer.length,
+    };
+  }
+
+  async deleteFile(fileUrl: string): Promise<boolean> {
+    try {
+      const match = fileUrl.match(/path=([^&]+)/);
+      const filePath = match ? decodeURIComponent(match[1]) : fileUrl;
+
+      const response = await fetch(`${this.supabaseUrl}/storage/v1/object/${this.bucketName}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${this.serviceRoleKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prefixes: [filePath] }),
+      });
+
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 // Storage Facade Factory
 export function getStorageProvider(): StorageProvider {
-  // Swappable provider switch based on env (e.g. process.env.STORAGE_PROVIDER === 'supabase')
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return new SupabaseStorageProvider();
+  }
   return new LocalStorageProvider();
 }
