@@ -263,6 +263,17 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
+
+            {/* Public Request Access Link */}
+            <div className="mt-5 text-center pt-4 border-t border-slate-800/60">
+              <p className="text-xs text-slate-400 mb-1.5">Manage a motorcycle fleet?</p>
+              <a
+                href="/request-access"
+                className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors bg-emerald-500/10 hover:bg-emerald-500/20 px-3.5 py-1.5 rounded-lg border border-emerald-500/20"
+              >
+                <span>Request Organization Access</span> &rarr;
+              </a>
+            </div>
           </div>
         )}
 

@@ -50,6 +50,19 @@ export default function Navbar({ user }: NavbarProps) {
           <div className="flex items-center gap-2 sm:gap-4">
             {isAdmin ? (
               <>
+                {user.role === 'SUPER_ADMIN' && (
+                  <Link
+                    href="/super-admin"
+                    className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                      pathname === '/super-admin'
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20'
+                    }`}
+                  >
+                    <Shield className="w-4 h-4 text-amber-400" />
+                    <span>Super Admin</span>
+                  </Link>
+                )}
                 <Link
                   href="/admin/dashboard"
                   className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors ${
