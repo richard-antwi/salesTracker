@@ -7,7 +7,7 @@ import { Bike, LogOut, PlusCircle, CreditCard, LayoutDashboard, Shield } from 'l
 interface NavbarProps {
   user?: {
     name: string;
-    role: 'ADMIN' | 'RIDER' | 'GUARANTOR';
+    role: 'SUPER_ADMIN' | 'ADMIN' | 'RIDER' | 'GUARANTOR';
   } | null;
 }
 
@@ -25,7 +25,7 @@ export default function Navbar({ user }: NavbarProps) {
     return null;
   }
 
-  const isAdmin = user.role === 'ADMIN';
+  const isAdmin = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
 
   return (
     <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">

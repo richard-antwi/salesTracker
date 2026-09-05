@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     const session = await getCurrentSession();
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
       return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
@@ -36,12 +36,18 @@ export async function POST(
       return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
     }
 
+    // Organization data isolation check
+    if (session.role !== 'SUPER_ADMIN' && agreement.organizationId !== session.organizationId) {
+      return NextResponse.json({ error: 'Forbidden: Cannot add payment to agreement outside organization' }, { status: 403 });
+    }
+
     const payment = await prisma.payment.create({
       data: {
+        organizationId: agreement.organizationId,
         agreementId,
         amount: parseFloat(amount),
         datePaid: datePaid ? new Date(datePaid) : new Date(),
-        channel: channel || 'MOMO', // Default channel is MOMO
+        channel: channel || 'MOMO',
         reference: reference || null,
         note: note || null,
         recordedBy: session.userId,

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { comparePassword, setAuthCookie } from '@/lib/auth';
+import { comparePassword, setAuthCookie, UserSession } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -26,11 +26,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const sessionPayload = {
+    const sessionPayload: UserSession = {
       userId: user.id,
+      organizationId: user.organizationId,
       name: user.name,
       phone: user.phone,
-      role: user.role as 'ADMIN' | 'RIDER' | 'GUARANTOR',
+      role: user.role as 'SUPER_ADMIN' | 'ADMIN' | 'RIDER' | 'GUARANTOR',
       mustChangePassword: user.mustChangePassword,
     };
 

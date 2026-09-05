@@ -26,6 +26,7 @@ async function main() {
   // Record payment in Postgres
   const payment = await prisma.payment.create({
     data: {
+      organizationId: agreement.organizationId,
       agreementId: agreement.id,
       amount: newPaymentAmount,
       datePaid: new Date(),
