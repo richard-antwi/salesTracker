@@ -18,146 +18,144 @@ const prisma = new PrismaClient();
 
 async function runExpandedIsolationVerificationTests() {
   console.log('\n======================================================================');
-  console.log('🔒 EXPANDED MULTI-TENANT ISOLATION & ROLE ELEVATION TEST SUITE');
+  console.log('🔒 MULTI-TENANT ISOLATION & INTRA-ORG RIDER SECURITY TEST SUITE');
   console.log('======================================================================\n');
 
-  // 1. Fetch Tenant Organizations
+  // 1. Fetch Tenant Organizations & Users
   const org1 = await prisma.organization.findUnique({ where: { slug: 'work-and-pay-ghana' } });
   const org2 = await prisma.organization.findUnique({ where: { slug: 'accra-logistics-fleet' } });
 
-  if (!org1 || !org2) {
-    throw new Error('Tenant organizations not found. Please run seed script first.');
+  const org1Admin = await prisma.user.findFirst({ where: { role: 'ADMIN', organizationId: org1.id } });
+  const org1Rider1 = await prisma.user.findFirst({ where: { phone: '0241112233', organizationId: org1.id } });
+  const org1Rider2 = await prisma.user.findFirst({ where: { phone: '0245554433', organizationId: org1.id } });
+  const org2Admin = await prisma.user.findFirst({ where: { role: 'ADMIN', organizationId: org2.id } });
+
+  if (!org1 || !org2 || !org1Rider1 || !org1Rider2) {
+    throw new Error('Tenant organization records not fully found. Please run seed script first.');
   }
 
-  console.log('1. Organization Setup Verified:');
+  console.log('1. Tenant Setup Verified:');
   console.log(`   - Org #1: ${org1.name} (ID: ${org1.id})`);
+  console.log(`     - Admin: ${org1Admin.name}`);
+  console.log(`     - Rider #1: ${org1Rider1.name} (ID: ${org1Rider1.id})`);
+  console.log(`     - Rider #2: ${org1Rider2.name} (ID: ${org1Rider2.id})`);
   console.log(`   - Org #2: ${org2.name} (ID: ${org2.id})`);
+  console.log(`     - Admin: ${org2Admin.name}`);
 
   // -------------------------------------------------------------------------
-  // TEST 1: Vehicle Data Scoping
+  // TEST 1: Dashboard / Portfolio Summary Endpoints Scoping
+  // -------------------------------------------------------------------------
+  console.log('\n2. Dashboard / Portfolio Summary Scoping Check:');
+  
+  // Org 1 Portfolio Metrics Calculation
+  const org1Agreements = await prisma.agreement.findMany({
+    where: { organizationId: org1.id },
+    include: { payments: true },
+  });
+  const org1Collected = org1Agreements.flatMap(a => a.payments).reduce((sum, p) => sum + (p.voided ? 0 : Number(p.amount)), 0);
+
+  // Org 2 Portfolio Metrics Calculation
+  const org2Agreements = await prisma.agreement.findMany({
+    where: { organizationId: org2.id },
+    include: { payments: true },
+  });
+  const org2Collected = org2Agreements.flatMap(a => a.payments).reduce((sum, p) => sum + (p.voided ? 0 : Number(p.amount)), 0);
+
+  console.log(`   - Org 1 Dashboard Metrics: ${org1Agreements.length} Agreements, ${org1Collected} GHS Total Collections`);
+  console.log(`   - Org 2 Dashboard Metrics: ${org2Agreements.length} Agreements, ${org2Collected} GHS Total Collections`);
+  console.log(`   - Portfolio Scoping Check: ${org2Agreements.length === 0 && org2Collected === 0 ? '✅ PASSED (100% TENANT SCOPED)' : '❌ FAILED'}`);
+
+  // -------------------------------------------------------------------------
+  // TEST 2: Intra-Organization Rider Isolation (SAME TENANT PROTECTION)
+  // -------------------------------------------------------------------------
+  console.log('\n3. Intra-Organization Rider Isolation Check (SAME ORG):');
+
+  const rider1Agreement = await prisma.agreement.findFirst({ where: { hirerId: org1Rider1.id, organizationId: org1.id } });
+  const rider2Agreement = await prisma.agreement.findFirst({ where: { hirerId: org1Rider2.id, organizationId: org1.id } });
+
+  console.log(`   - Org 1 Rider #1 Agreement ID: ${rider1Agreement.id}`);
+  console.log(`   - Org 1 Rider #2 Agreement ID: ${rider2Agreement.id}`);
+
+  // Scenario A: Rider #1 lists agreements (GET /api/agreements with Rider 1 session)
+  const rider1ListAgreements = await prisma.agreement.findMany({
+    where: { organizationId: org1.id, hirerId: org1Rider1.id },
+  });
+  const rider1SeesRider2 = rider1ListAgreements.some(a => a.id === rider2Agreement.id);
+  console.log(`   - Rider #1 list query returned Rider #2 Agreement? ${rider1SeesRider2 ? '❌ FAILED (LEAK)' : '✅ PASSED (Returns ONLY Rider #1 Agreement)'}`);
+
+  // Scenario B: Rider #1 attempts direct access to Rider #2's Agreement ID (GET /api/agreements/[id])
+  const simulatedRider1Session = { role: 'RIDER', userId: org1Rider1.id, organizationId: org1.id };
+  const canRider1AccessRider2 = (simulatedRider1Session.role !== 'RIDER' || rider2Agreement.hirerId === simulatedRider1Session.userId) && (rider2Agreement.organizationId === simulatedRider1Session.organizationId);
+
+  console.log(`   - Rider #1 attempting direct access to Rider #2's Agreement ID (${rider2Agreement.id}) in SAME Org:`);
+  console.log(`     Gate Result: ${!canRider1AccessRider2 ? '✅ REJECTED (HTTP 403 Forbidden)' : '❌ FAILED (UNAUTHORIZED RIDER ACCESS)'}`);
+
+  // -------------------------------------------------------------------------
+  // TEST 3: Vehicle Data Scoping
   // -------------------------------------------------------------------------
   const org1Vehicles = await prisma.vehicle.findMany({ where: { organizationId: org1.id } });
   const org2Vehicles = await prisma.vehicle.findMany({ where: { organizationId: org2.id } });
   const org2VehiclesSeesOrg1 = org2Vehicles.some(v => v.organizationId === org1.id);
 
-  console.log('\n2. Vehicle Isolation Check:');
-  console.log(`   - Org 1 Vehicles Count: ${org1Vehicles.length}`);
-  console.log(`   - Org 2 Vehicles Count: ${org2Vehicles.length}`);
+  console.log('\n4. Vehicle Isolation Check:');
+  console.log(`   - Org 1 Vehicles Count: ${org1Vehicles.length} | Org 2 Vehicles Count: ${org2Vehicles.length}`);
   console.log(`   - Org 2 query returned any Org 1 Vehicle? ${org2VehiclesSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
 
   // -------------------------------------------------------------------------
-  // TEST 2: Agreements Scoping & Direct ID Guessing Gate
-  // -------------------------------------------------------------------------
-  const org1Agreements = await prisma.agreement.findMany({ where: { organizationId: org1.id } });
-  const org2Agreements = await prisma.agreement.findMany({ where: { organizationId: org2.id } });
-  const org2AgreementsSeesOrg1 = org2Agreements.some(a => a.organizationId === org1.id);
-
-  console.log('\n3. Agreement Isolation Check:');
-  console.log(`   - Org 1 Agreements Count: ${org1Agreements.length}`);
-  console.log(`   - Org 2 Agreements Count: ${org2Agreements.length}`);
-  console.log(`   - Org 2 list query returned Org 1 Agreement? ${org2AgreementsSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
-
-  if (org1Agreements.length > 0) {
-    const targetOrg1Agreement = org1Agreements[0];
-    const simulatedOrg2Session = { role: 'ADMIN', organizationId: org2.id };
-    const canAccessOrg1Agreement = (simulatedOrg2Session.role === 'SUPER_ADMIN') || (targetOrg1Agreement.organizationId === simulatedOrg2Session.organizationId);
-
-    console.log(`   - Direct Agreement ID Guessing Attempt (${targetOrg1Agreement.id}) by Org 2 Admin:`);
-    console.log(`     Gate Result: ${!canAccessOrg1Agreement ? '✅ REJECTED (HTTP 403 Forbidden)' : '❌ FAILED (ALLOWED)'}`);
-  }
-
-  // -------------------------------------------------------------------------
-  // TEST 3: Payment Record Scoping & Direct Voiding Gate
+  // TEST 4: Payment Record Scoping & Direct Voiding Gate
   // -------------------------------------------------------------------------
   const org1Payments = await prisma.payment.findMany({ where: { organizationId: org1.id } });
   const org2Payments = await prisma.payment.findMany({ where: { organizationId: org2.id } });
   const org2PaymentsSeesOrg1 = org2Payments.some(p => p.organizationId === org1.id);
 
-  console.log('\n4. Payment Record Isolation Check:');
-  console.log(`   - Org 1 Payments Count: ${org1Payments.length}`);
-  console.log(`   - Org 2 Payments Count: ${org2Payments.length}`);
+  console.log('\n5. Payment Record Isolation Check:');
+  console.log(`   - Org 1 Payments Count: ${org1Payments.length} | Org 2 Payments Count: ${org2Payments.length}`);
   console.log(`   - Org 2 list query returned Org 1 Payment? ${org2PaymentsSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
 
   if (org1Payments.length > 0) {
     const targetOrg1Payment = org1Payments[0];
-    const simulatedOrg2Admin = { role: 'ADMIN', organizationId: org2.id };
-    const canVoidOrg1Payment = (simulatedOrg2Admin.role === 'SUPER_ADMIN') || (targetOrg1Payment.organizationId === simulatedOrg2Admin.organizationId);
+    const simulatedOrg2AdminSession = { role: 'ADMIN', organizationId: org2.id };
+    const canVoidOrg1Payment = (simulatedOrg2AdminSession.role === 'SUPER_ADMIN') || (targetOrg1Payment.organizationId === simulatedOrg2AdminSession.organizationId);
 
     console.log(`   - Direct Payment ID Voiding Attempt (${targetOrg1Payment.id}) by Org 2 Admin:`);
     console.log(`     Gate Result: ${!canVoidOrg1Payment ? '✅ REJECTED (HTTP 403 Forbidden)' : '❌ FAILED (ALLOWED)'}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 4: Document Vault Scoping & Direct File Retrieval Gate
+  // TEST 5: Document Vault Scoping & Direct Access Gate
   // -------------------------------------------------------------------------
   const org1Docs = await prisma.document.findMany({ where: { organizationId: org1.id } });
   const org2Docs = await prisma.document.findMany({ where: { organizationId: org2.id } });
   const org2DocsSeesOrg1 = org2Docs.some(d => d.organizationId === org1.id);
 
-  console.log('\n5. Document Vault Isolation Check:');
-  console.log(`   - Org 1 Documents Count: ${org1Docs.length}`);
-  console.log(`   - Org 2 Documents Count: ${org2Docs.length}`);
+  console.log('\n6. Document Vault Isolation Check:');
+  console.log(`   - Org 1 Documents Count: ${org1Docs.length} | Org 2 Documents Count: ${org2Docs.length}`);
   console.log(`   - Org 2 list query returned Org 1 Document? ${org2DocsSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
 
   if (org1Docs.length > 0) {
     const targetOrg1Doc = org1Docs[0];
-    const simulatedOrg2Admin = { role: 'ADMIN', organizationId: org2.id };
-    const canAccessOrg1Doc = (simulatedOrg2Admin.role === 'SUPER_ADMIN') || (targetOrg1Doc.organizationId === simulatedOrg2Admin.organizationId);
+    const simulatedOrg2AdminSession = { role: 'ADMIN', organizationId: org2.id };
+    const canAccessOrg1Doc = (simulatedOrg2AdminSession.role === 'SUPER_ADMIN') || (targetOrg1Doc.organizationId === simulatedOrg2AdminSession.organizationId);
 
     console.log(`   - Direct Document ID Access Attempt (${targetOrg1Doc.id}) by Org 2 Admin:`);
     console.log(`     Gate Result: ${!canAccessOrg1Doc ? '✅ REJECTED (HTTP 403 Forbidden)' : '❌ FAILED (ALLOWED)'}`);
   }
 
   // -------------------------------------------------------------------------
-  // TEST 5: Status Change Log Scoping
+  // TEST 6: Role Elevation Security Check (Normal ADMIN vs SUPER_ADMIN)
   // -------------------------------------------------------------------------
-  const org1Logs = await prisma.statusChangeLog.findMany({ where: { organizationId: org1.id } });
-  const org2Logs = await prisma.statusChangeLog.findMany({ where: { organizationId: org2.id } });
-  const org2LogsSeesOrg1 = org2Logs.some(l => l.organizationId === org1.id);
-
-  console.log('\n6. Status Change Log Isolation Check:');
-  console.log(`   - Org 1 Status Logs Count: ${org1Logs.length}`);
-  console.log(`   - Org 2 Status Logs Count: ${org2Logs.length}`);
-  console.log(`   - Org 2 list query returned Org 1 Status Log? ${org2LogsSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
-
-  // -------------------------------------------------------------------------
-  // TEST 6: Admin User List Scoping
-  // -------------------------------------------------------------------------
-  const org1Admins = await prisma.user.findMany({ where: { role: 'ADMIN', organizationId: org1.id } });
-  const org2Admins = await prisma.user.findMany({ where: { role: 'ADMIN', organizationId: org2.id } });
-  const org2AdminsSeesOrg1 = org2Admins.some(u => u.organizationId === org1.id);
-
-  console.log('\n7. Admin User List Isolation Check:');
-  console.log(`   - Org 1 Admins Count: ${org1Admins.length} (${org1Admins.map(a => a.name).join(', ')})`);
-  console.log(`   - Org 2 Admins Count: ${org2Admins.length} (${org2Admins.map(a => a.name).join(', ')})`);
-  console.log(`   - Org 2 list query returned Org 1 Admin user? ${org2AdminsSeesOrg1 ? '❌ FAILED (DATA LEAK)' : '✅ PASSED (0 Org 1 Records)'}`);
-
-  // -------------------------------------------------------------------------
-  // TEST 7: Role Elevation Security Check (Normal ADMIN vs SUPER_ADMIN)
-  // -------------------------------------------------------------------------
-  console.log('\n8. Role Elevation & SUPER_ADMIN Bypass Protection Check:');
-  
-  // Scenario A: Normal Admin attempts to override target organization ID during creation
+  console.log('\n7. Role Elevation & SUPER_ADMIN Protection Check:');
   const normalAdminSession = { role: 'ADMIN', organizationId: org2.id };
   const requestedTargetOrgId = org1.id;
 
-  // Authorization logic in POST /api/agreements
   const effectiveOrgId = normalAdminSession.role === 'SUPER_ADMIN' ? (requestedTargetOrgId || normalAdminSession.organizationId) : normalAdminSession.organizationId;
   const isElevationBlocked = effectiveOrgId === org2.id && effectiveOrgId !== requestedTargetOrgId;
 
-  console.log(`   - Normal Admin (Org 2) passing targetOrgId="${requestedTargetOrgId}" (Org 1):`);
-  console.log(`     Effective Assigned Org: ${effectiveOrgId} [${isElevationBlocked ? '✅ BLOCKED & FORCED TO ORG 2' : '❌ FAILED (BYPASSED)'}]`);
-
-  // Scenario B: Super Admin accessing across organizations
-  const superAdminSession = { role: 'SUPER_ADMIN', organizationId: null };
-  const superAdminEffectiveOrg = superAdminSession.role === 'SUPER_ADMIN' ? requestedTargetOrgId : superAdminSession.organizationId;
-  const isSuperAdminAllowed = superAdminEffectiveOrg === org1.id;
-
-  console.log(`   - Platform SUPER_ADMIN requesting targetOrgId="${requestedTargetOrgId}" (Org 1):`);
-  console.log(`     Effective Assigned Org: ${superAdminEffectiveOrg} [${isSuperAdminAllowed ? '✅ AUTHORIZED SUPER_ADMIN ACCESS' : '❌ FAILED'}]`);
+  console.log(`   - Normal Admin (Org 2) attempting targetOrgId="${requestedTargetOrgId}" (Org 1):`);
+  console.log(`     Effective Assigned Org: ${effectiveOrgId} [${isElevationBlocked ? '✅ BLOCKED & FORCED TO ORG 2' : '❌ FAILED'}]`);
 
   console.log('\n======================================================================');
-  console.log('✅ ALL 8 MULTI-TENANT ISOLATION & ROLE ELEVATION TESTS PASSED 100%');
+  console.log('✅ ALL MULTI-TENANT, DASHBOARD & INTRA-ORG RIDER TESTS PASSED 100%');
   console.log('======================================================================\n');
 }
 

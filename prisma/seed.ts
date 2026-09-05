@@ -54,7 +54,7 @@ async function main() {
     },
   });
 
-  // 4. Create Org #1 Rider
+  // 4. Create Org #1 Rider 1
   const rider = await prisma.user.upsert({
     where: { phone: '0241112233' },
     update: { organizationId: org1.id },
@@ -66,6 +66,21 @@ async function main() {
       passwordHash: riderPasswordHash,
       role: 'RIDER',
       mustChangePassword: true,
+    },
+  });
+
+  // 4b. Create Org #1 Rider 2 (for intra-organization rider isolation testing)
+  const rider2 = await prisma.user.upsert({
+    where: { phone: '0245554433' },
+    update: { organizationId: org1.id },
+    create: {
+      organizationId: org1.id,
+      name: 'Kofi Boateng (Org 1 Rider 2)',
+      phone: '0245554433',
+      email: 'kofi@workandpay.gh',
+      passwordHash: riderPasswordHash,
+      role: 'RIDER',
+      mustChangePassword: false,
     },
   });
 
@@ -196,6 +211,43 @@ async function main() {
         toStatus: 'ACTIVE',
         reason: 'Initial agreement digitizing & verification',
         changedBy: admin.name,
+      },
+    });
+  }
+
+  // 9b. Create Org #1 Vehicle & Agreement for Rider 2
+  let vehicle2 = await prisma.vehicle.findFirst({ where: { registrationNo: 'GT-9944-24', organizationId: org1.id } });
+  if (!vehicle2) {
+    vehicle2 = await prisma.vehicle.create({
+      data: {
+        organizationId: org1.id,
+        makeModel: 'Haojue Express 125',
+        registrationNo: 'GT-9944-24',
+        chassisNo: 'HJ9944882211',
+        engineNo: 'ENG994488',
+        colorYear: 'Black / 2024',
+      },
+    });
+  }
+
+  let agreement2 = await prisma.agreement.findFirst({ where: { hirerId: rider2.id, organizationId: org1.id } });
+  if (!agreement2) {
+    agreement2 = await prisma.agreement.create({
+      data: {
+        organizationId: org1.id,
+        ownerName: admin.name,
+        ownerPhone: admin.phone,
+        hirerId: rider2.id,
+        guarantor1Name: 'Kwabena Darko',
+        guarantor1Phone: '0207776655',
+        vehicleId: vehicle2.id,
+        cashPrice: 10000,
+        hirePurchasePrice: 14000,
+        installmentAmount: 280,
+        frequency: 'WEEKLY',
+        totalInstallments: 50,
+        startDate: sixWeeksAgo,
+        status: 'ACTIVE',
       },
     });
   }
