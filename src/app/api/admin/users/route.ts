@@ -60,6 +60,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
     }
 
+    const { isValidGhanaPhone } = await import('@/lib/validation');
+    if (!isValidGhanaPhone(phone)) {
+      return NextResponse.json({ error: 'Phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0244123456)' }, { status: 400 });
+    }
+
     const existingUser = await prisma.user.findUnique({
       where: { phone: phone.trim() },
     });

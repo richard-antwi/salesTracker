@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Bike, User, ShieldCheck, DollarSign, Calendar, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Bike, User, ShieldCheck, DollarSign, Calendar, ArrowLeft, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { CONFIG } from '@/lib/config';
+import { isValidGhanaPhone } from '@/lib/validation';
 
 export default function NewAgreementPage() {
   const router = useRouter();
@@ -28,6 +29,12 @@ export default function NewAgreementPage() {
   const [guarantor2Name, setGuarantor2Name] = useState('');
   const [guarantor2Phone, setGuarantor2Phone] = useState('');
 
+  // Phone Touched / Validation States
+  const [ownerPhoneTouched, setOwnerPhoneTouched] = useState(false);
+  const [hirerPhoneTouched, setHirerPhoneTouched] = useState(false);
+  const [guarantor1PhoneTouched, setGuarantor1PhoneTouched] = useState(false);
+  const [guarantor2PhoneTouched, setGuarantor2PhoneTouched] = useState(false);
+
   // Vehicle
   const [makeModel, setMakeModel] = useState('Bajaj Boxer BM 150');
   const [registrationNo, setRegistrationNo] = useState('');
@@ -41,11 +48,79 @@ export default function NewAgreementPage() {
   const [installmentAmount, setInstallmentAmount] = useState('300');
   const [frequency, setFrequency] = useState<'WEEKLY' | 'MONTHLY'>('WEEKLY');
   const [totalInstallments, setTotalInstallments] = useState('50');
+  const [isAutoCalculated, setIsAutoCalculated] = useState(true);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+
+  // Compute calculated installments (Math.ceil(hirePurchasePrice / installmentAmount))
+  const computeCalculatedInstallments = (hpStr: string, instStr: string): number | null => {
+    const hp = parseFloat(hpStr);
+    const inst = parseFloat(instStr);
+    if (!isNaN(hp) && !isNaN(inst) && inst > 0) {
+      return Math.ceil(hp / inst);
+    }
+    return null;
+  };
+
+  // Recalculate live when Hire-Purchase Price, Installment Amount, or Frequency changes
+  useEffect(() => {
+    if (isAutoCalculated) {
+      const calculated = computeCalculatedInstallments(hirePurchasePrice, installmentAmount);
+      if (calculated !== null) {
+        setTotalInstallments(String(calculated));
+      }
+    }
+  }, [hirePurchasePrice, installmentAmount, frequency, isAutoCalculated]);
+
+  // Handler for manual override of Total Installments
+  function handleTotalInstallmentsChange(val: string) {
+    setTotalInstallments(val);
+    setIsAutoCalculated(false);
+  }
+
+  function handleResetTotalInstallments() {
+    setIsAutoCalculated(true);
+    const calculated = computeCalculatedInstallments(hirePurchasePrice, installmentAmount);
+    if (calculated !== null) {
+      setTotalInstallments(String(calculated));
+    }
+  }
+
+  // Validation helpers
+  const ownerPhoneError = ownerPhoneTouched && !isValidGhanaPhone(ownerPhone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
+  const hirerPhoneError = hirerPhoneTouched && !isValidGhanaPhone(hirerPhone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
+  const guarantor1PhoneError = guarantor1PhoneTouched && guarantor1Phone.trim().length > 0 && !isValidGhanaPhone(guarantor1Phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
+  const guarantor2PhoneError = guarantor2PhoneTouched && guarantor2Phone.trim().length > 0 && !isValidGhanaPhone(guarantor2Phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    // Mark all phone fields as touched to trigger inline error displays if invalid
+    setOwnerPhoneTouched(true);
+    setHirerPhoneTouched(true);
+    setGuarantor1PhoneTouched(true);
+    setGuarantor2PhoneTouched(true);
+
+    if (!isValidGhanaPhone(ownerPhone)) {
+      setError('Owner Phone number is invalid. Enter a 10-digit Ghana number starting with 0 (e.g. 0244123456).');
+      return;
+    }
+
+    if (!isValidGhanaPhone(hirerPhone)) {
+      setError('Hirer Phone number is invalid. Enter a 10-digit Ghana number starting with 0 (e.g. 0245556677).');
+      return;
+    }
+
+    if (guarantor1Phone.trim().length > 0 && !isValidGhanaPhone(guarantor1Phone)) {
+      setError('Guarantor 1 Phone number is invalid. Enter a 10-digit Ghana number starting with 0.');
+      return;
+    }
+
+    if (guarantor2Phone.trim().length > 0 && !isValidGhanaPhone(guarantor2Phone)) {
+      setError('Guarantor 2 Phone number is invalid. Enter a 10-digit Ghana number starting with 0.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -116,7 +191,7 @@ export default function NewAgreementPage() {
           <div>
             <h1 className="text-xl font-bold text-slate-900">New Hire-Purchase Agreement</h1>
             <p className="text-xs text-slate-500">
-              Enter owner,hirer, vehicle, and financial details per paper contract
+              Enter owner, hirer, vehicle, and financial details per paper contract
             </p>
           </div>
         </div>
@@ -180,10 +255,21 @@ export default function NewAgreementPage() {
                   <input
                     type="text"
                     value={ownerPhone}
-                    onChange={(e) => setOwnerPhone(e.target.value)}
+                    onChange={(e) => {
+                      setOwnerPhone(e.target.value);
+                      if (!ownerPhoneTouched) setOwnerPhoneTouched(true);
+                    }}
+                    onBlur={() => setOwnerPhoneTouched(true)}
                     required
-                    className="input-field"
+                    placeholder="e.g. 0240000000"
+                    className={`input-field ${ownerPhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
                   />
+                  {ownerPhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {ownerPhoneError}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -211,11 +297,21 @@ export default function NewAgreementPage() {
                   <input
                     type="text"
                     value={hirerPhone}
-                    onChange={(e) => setHirerPhone(e.target.value)}
+                    onChange={(e) => {
+                      setHirerPhone(e.target.value);
+                      if (!hirerPhoneTouched) setHirerPhoneTouched(true);
+                    }}
+                    onBlur={() => setHirerPhoneTouched(true)}
                     placeholder="e.g. 0245556677"
                     required
-                    className="input-field"
+                    className={`input-field ${hirerPhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
                   />
+                  {hirerPhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {hirerPhoneError}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Hirer Email (Optional)</label>
@@ -264,10 +360,20 @@ export default function NewAgreementPage() {
                   <input
                     type="text"
                     value={guarantor1Phone}
-                    onChange={(e) => setGuarantor1Phone(e.target.value)}
-                    placeholder="0208889900"
-                    className="input-field"
+                    onChange={(e) => {
+                      setGuarantor1Phone(e.target.value);
+                      if (!guarantor1PhoneTouched) setGuarantor1PhoneTouched(true);
+                    }}
+                    onBlur={() => setGuarantor1PhoneTouched(true)}
+                    placeholder="e.g. 0208889900"
+                    className={`input-field ${guarantor1PhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
                   />
+                  {guarantor1PhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {guarantor1PhoneError}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor 2 Name</label>
@@ -284,10 +390,20 @@ export default function NewAgreementPage() {
                   <input
                     type="text"
                     value={guarantor2Phone}
-                    onChange={(e) => setGuarantor2Phone(e.target.value)}
-                    placeholder="0554443322"
-                    className="input-field"
+                    onChange={(e) => {
+                      setGuarantor2Phone(e.target.value);
+                      if (!guarantor2PhoneTouched) setGuarantor2PhoneTouched(true);
+                    }}
+                    onBlur={() => setGuarantor2PhoneTouched(true)}
+                    placeholder="e.g. 0554443322"
+                    className={`input-field ${guarantor2PhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
                   />
+                  {guarantor2PhoneError && (
+                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {guarantor2PhoneError}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -402,13 +518,31 @@ export default function NewAgreementPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Total Installments *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-medium text-slate-700">
+                      Total Installments *
+                    </label>
+                    {isAutoCalculated ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                        auto-calculated
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleResetTotalInstallments}
+                        title="Click to reset to auto-calculated value"
+                        className="text-[10px] font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded transition-colors flex items-center gap-1"
+                      >
+                        <RefreshCw className="w-2.5 h-2.5" /> custom (reset)
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="number"
                     value={totalInstallments}
-                    onChange={(e) => setTotalInstallments(e.target.value)}
+                    onChange={(e) => handleTotalInstallmentsChange(e.target.value)}
                     required
-                    className="input-field"
+                    className={`input-field ${isAutoCalculated ? 'bg-emerald-50/20 border-emerald-300 font-semibold text-slate-900' : 'bg-amber-50/20 border-amber-300 font-semibold'}`}
                   />
                 </div>
                 <div>
