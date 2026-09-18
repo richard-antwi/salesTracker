@@ -95,18 +95,6 @@ export default function LoginPage() {
     }
   }
 
-  function fillDemoAdmin() {
-    setIdentifier('0240000000');
-    setPassword('Admin123!');
-    setError('');
-  }
-
-  function fillDemoRider() {
-    setIdentifier('0241112233');
-    setPassword('Rider123!');
-    setError('');
-  }
-
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
       {/* Subtle Background Radial Accent */}
@@ -242,36 +230,6 @@ export default function LoginPage() {
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
-
-            {/* Demo Quick Logins for Testing */}
-            <div className="mt-8 pt-6 border-t border-slate-800/80">
-              <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-3 text-center">
-                Demo Quick Access
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={fillDemoAdmin}
-                  className="bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2.5 rounded-xl text-xs font-medium text-left flex flex-col gap-0.5 transition-colors group"
-                >
-                  <span className="text-emerald-400 font-semibold group-hover:text-emerald-300 flex items-center gap-1">
-                    <Shield className="w-3 h-3" /> Admin
-                  </span>
-                  <span className="text-[10px] text-slate-400 truncate">Emmanuel Osei</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={fillDemoRider}
-                  className="bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 p-2.5 rounded-xl text-xs font-medium text-left flex flex-col gap-0.5 transition-colors group"
-                >
-                  <span className="text-amber-400 font-semibold group-hover:text-amber-300 flex items-center gap-1">
-                    <Bike className="w-3 h-3" /> Rider
-                  </span>
-                  <span className="text-[10px] text-slate-400 truncate">Kwesi Mensah</span>
-                </button>
-              </div>
-            </div>
 
             {/* Public Request Access Link */}
             <div className="mt-5 text-center pt-4 border-t border-slate-800/60">
