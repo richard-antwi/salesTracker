@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bike, ShieldCheck, ArrowLeft, CheckCircle2, AlertCircle, Building2, User, Phone, Mail, Lock } from 'lucide-react';
+import { Bike, ShieldCheck, ArrowLeft, CheckCircle2, AlertCircle, Building2, User, Phone, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { isValidGhanaPhone } from '@/lib/validation';
 
 export default function RequestAccessPage() {
@@ -16,6 +16,7 @@ export default function RequestAccessPage() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [contactEmail, setContactEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const phoneError = phoneTouched && !isValidGhanaPhone(contactPhone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
 
@@ -202,13 +203,21 @@ export default function RequestAccessPage() {
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Set admin login password (min 6 chars)"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs pl-9 pr-3 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs pl-9 pr-9 py-2.5 text-white placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-2.5 p-1 text-slate-400 hover:text-slate-200 transition-colors"
+                    title={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
 
