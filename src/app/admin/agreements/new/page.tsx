@@ -51,6 +51,12 @@ export default function NewAgreementPage() {
   const [isAutoCalculated, setIsAutoCalculated] = useState(true);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Contract Penalty / Late Fee Option
+  const [enableLateFee, setEnableLateFee] = useState(false);
+  const [lateFeeType, setLateFeeType] = useState<'FLAT' | 'PERCENTAGE'>('FLAT');
+  const [lateFeeAmount, setLateFeeAmount] = useState('50');
+  const [gracePeriodDays, setGracePeriodDays] = useState('7');
+
   // Compute calculated installments (Math.ceil(hirePurchasePrice / installmentAmount))
   const computeCalculatedInstallments = (hpStr: string, instStr: string): number | null => {
     const hp = parseFloat(hpStr);
@@ -149,6 +155,10 @@ export default function NewAgreementPage() {
           frequency,
           totalInstallments,
           startDate,
+          enableLateFee,
+          lateFeeType,
+          lateFeeAmount: enableLateFee ? lateFeeAmount : 0,
+          gracePeriodDays: enableLateFee ? gracePeriodDays : 7,
         }),
       });
 
@@ -559,6 +569,75 @@ export default function NewAgreementPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Section 6: Contract Penalty & Late Fee Option */}
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                  <AlertCircle className="w-4 h-4 text-emerald-600" />
+                  <span>6. Overdue Penalty & Late Fee Option</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer gap-2">
+                  <input
+                    type="checkbox"
+                    checked={enableLateFee}
+                    onChange={(e) => setEnableLateFee(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                  <span className="text-xs font-semibold text-slate-700">
+                    {enableLateFee ? 'Late Fee Enabled' : 'No Late Fee (Standard)'}
+                  </span>
+                </label>
+              </div>
+
+              {enableLateFee ? (
+                <div className="bg-amber-50/50 border border-amber-200/80 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Penalty Type</label>
+                    <select
+                      value={lateFeeType}
+                      onChange={(e) => setLateFeeType(e.target.value as 'FLAT' | 'PERCENTAGE')}
+                      className="input-field bg-white"
+                    >
+                      <option value="FLAT">Flat Fee ({CONFIG.CURRENCY_SYMBOL} per overdue period)</option>
+                      <option value="PERCENTAGE">Percentage (% of installment per period)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                      {lateFeeType === 'FLAT' ? `Penalty Amount (${CONFIG.CURRENCY_SYMBOL})` : 'Penalty Percentage (%)'}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={lateFeeAmount}
+                      onChange={(e) => setLateFeeAmount(e.target.value)}
+                      required={enableLateFee}
+                      placeholder={lateFeeType === 'FLAT' ? 'e.g. 50' : 'e.g. 5'}
+                      className="input-field bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-700 mb-1">Grace Period (Days)</label>
+                    <input
+                      type="number"
+                      value={gracePeriodDays}
+                      onChange={(e) => setGracePeriodDays(e.target.value)}
+                      required={enableLateFee}
+                      className="input-field bg-white"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Fee begins accruing after this number of days late.
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500 bg-slate-50 border border-slate-200/60 p-3 rounded-xl">
+                  💡 No automatic late fee penalty will accrue on this agreement. Overdue days will still be tracked for status badges.
+                </p>
+              )}
             </div>
 
             <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">

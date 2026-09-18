@@ -59,6 +59,11 @@ interface RiderAgreementData {
     hirePurchasePrice: number;
     totalPaid: number;
     balanceRemaining: number;
+    enableLateFee?: boolean;
+    lateFeeType?: 'FLAT' | 'PERCENTAGE';
+    lateFeeAmount?: number;
+    accumulatedLateFee?: number;
+    totalAmountDue?: number;
     percentComplete: number;
     scheduledFinishDate: string;
     actualPaceFinishDate: string;
@@ -217,6 +222,17 @@ export default function RiderMyAgreementPage() {
               style={{ width: `${summary.percentComplete}%` }}
             />
           </div>
+
+          {/* Optional Late Fee Penalty Alert */}
+          {summary.enableLateFee && (summary.accumulatedLateFee || 0) > 0 && (
+            <div className="bg-rose-500/20 border border-rose-500/40 rounded-xl p-3 text-xs flex items-center justify-between text-rose-200 mt-2">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Accrued Overdue Late Fee ({summary.lateFeeType === 'PERCENTAGE' ? `${summary.lateFeeAmount}%` : formatCedi(summary.lateFeeAmount || 0)})</span>
+              </div>
+              <span className="font-extrabold text-white font-mono">{formatCedi(summary.accumulatedLateFee || 0)}</span>
+            </div>
+          )}
         </div>
       </div>
 

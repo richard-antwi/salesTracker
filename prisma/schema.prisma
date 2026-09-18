@@ -90,6 +90,12 @@ model Agreement {
   startDate         DateTime
   status            AgreementStatus   @default(ACTIVE)
 
+  // Contract Penalty / Late Fee Option
+  enableLateFee     Boolean           @default(false)
+  lateFeeType       String            @default("FLAT") // "FLAT" | "PERCENTAGE"
+  lateFeeAmount     Decimal           @default(0) @db.Decimal(12, 2)
+  gracePeriodDays   Int               @default(7)
+
   payments          Payment[]
   statusLogs        StatusChangeLog[]
   documents         Document[]

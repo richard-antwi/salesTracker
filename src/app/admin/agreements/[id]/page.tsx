@@ -360,6 +360,24 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
             <span>PDF Statement</span>
           </a>
 
+          <a
+            href={`/api/agreements/${agreement.id}/notice?type=default`}
+            download
+            className="bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 font-semibold text-xs px-3 py-2 rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+          >
+            <FileText className="w-4 h-4 text-amber-600" />
+            <span>Default Notice</span>
+          </a>
+
+          <a
+            href={`/api/agreements/${agreement.id}/notice?type=repossession`}
+            download
+            className="bg-rose-50 border border-rose-300 hover:bg-rose-100 text-rose-900 font-semibold text-xs px-3 py-2 rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+          >
+            <ShieldAlert className="w-4 h-4 text-rose-600" />
+            <span>Repossession Notice</span>
+          </a>
+
           {agreement.status === 'ACTIVE' && (
             <Link
               href={`/admin/payments/new?agreementId=${agreement.id}`}

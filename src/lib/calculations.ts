@@ -4,6 +4,12 @@ export interface PaymentSummary {
   hirePurchasePrice: number;
   totalPaid: number;
   balanceRemaining: number;
+  enableLateFee: boolean;
+  lateFeeType: 'FLAT' | 'PERCENTAGE';
+  lateFeeAmount: number;
+  gracePeriodDays: number;
+  accumulatedLateFee: number;
+  totalAmountDue: number;
   percentComplete: number;
   scheduledFinishDate: Date;
   actualPaceFinishDate: Date;
@@ -16,15 +22,32 @@ export interface PaymentSummary {
 }
 
 /**
- * TODO: Late Fee / Penalty Calculation Plugin Point
- * Note: Automatic late fee logic is intentionally omitted per business specification.
- * When enabling penalty rules later, calculate fees based on daysOverdue beyond grace period.
+ * Calculates late fee based on agreement contract penalty settings.
  */
-export function calculateLateFeePlaceholder(daysOverdue: number, installmentAmount: number): number {
-  // Currently returns 0 (No fee added to current balances)
-  if (daysOverdue <= CONFIG.GRACE_PERIOD_DAYS) return 0;
-  // Placeholder formula for future penalty rules (e.g. 5% fee per overdue week)
-  return 0;
+export function calculateContractLateFee(options: {
+  enableLateFee?: boolean;
+  lateFeeType?: string;
+  lateFeeAmount?: unknown;
+  gracePeriodDays?: number;
+  daysOverdue: number;
+  installmentAmount: number;
+  periodDays: number;
+}): number {
+  if (!options.enableLateFee) return 0;
+  const graceDays = options.gracePeriodDays ?? CONFIG.GRACE_PERIOD_DAYS;
+  if (options.daysOverdue <= graceDays) return 0;
+
+  const overdueDaysAfterGrace = options.daysOverdue - graceDays;
+  const overduePeriods = Math.max(1, Math.ceil(overdueDaysAfterGrace / options.periodDays));
+  const feeRateOrAmount = toSafeNumber(options.lateFeeAmount);
+
+  if (options.lateFeeType === 'PERCENTAGE') {
+    const feePerPeriod = (feeRateOrAmount / 100) * options.installmentAmount;
+    return Math.round(overduePeriods * feePerPeriod * 100) / 100;
+  } else {
+    // FLAT fee per overdue period
+    return Math.round(overduePeriods * feeRateOrAmount * 100) / 100;
+  }
 }
 
 function toSafeNumber(val: unknown): number {
@@ -49,6 +72,10 @@ export function calculateAgreementSummary(agreement: {
   frequency: 'WEEKLY' | 'MONTHLY';
   totalInstallments: number;
   status?: string;
+  enableLateFee?: boolean;
+  lateFeeType?: string;
+  lateFeeAmount?: unknown;
+  gracePeriodDays?: number;
   payments?: Array<{ amount: unknown; voided: boolean; datePaid: Date | string }>;
 }): PaymentSummary {
   const startDate = new Date(agreement.startDate);
@@ -133,7 +160,8 @@ export function calculateAgreementSummary(agreement: {
         daysOverdue: 0,
       };
     } else {
-      if (diffDays >= CONFIG.GRACE_PERIOD_DAYS) {
+      const graceDays = agreement.gracePeriodDays ?? CONFIG.GRACE_PERIOD_DAYS;
+      if (diffDays >= graceDays) {
         statusBadge = {
           label: 'Severely Overdue',
           variant: 'danger',
@@ -149,10 +177,34 @@ export function calculateAgreementSummary(agreement: {
     }
   }
 
+  // 5. Late Fee / Penalty Accrual
+  const enableLateFee = Boolean(agreement.enableLateFee);
+  const lateFeeType = (agreement.lateFeeType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FLAT') as 'FLAT' | 'PERCENTAGE';
+  const lateFeeAmount = toSafeNumber(agreement.lateFeeAmount);
+  const gracePeriodDays = agreement.gracePeriodDays ?? CONFIG.GRACE_PERIOD_DAYS;
+
+  const accumulatedLateFee = calculateContractLateFee({
+    enableLateFee,
+    lateFeeType,
+    lateFeeAmount,
+    gracePeriodDays,
+    daysOverdue: statusBadge.daysOverdue,
+    installmentAmount,
+    periodDays,
+  });
+
+  const totalAmountDue = balanceRemaining + accumulatedLateFee;
+
   return {
     hirePurchasePrice,
     totalPaid,
     balanceRemaining,
+    enableLateFee,
+    lateFeeType,
+    lateFeeAmount,
+    gracePeriodDays,
+    accumulatedLateFee,
+    totalAmountDue,
     percentComplete,
     scheduledFinishDate,
     actualPaceFinishDate,

@@ -32,7 +32,16 @@ export default function Navbar({ user }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Name */}
-          <Link href={isAdmin ? '/admin/dashboard' : '/rider'} className="flex items-center gap-2.5 group">
+          <Link
+            href={
+              user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
+                ? '/admin/dashboard'
+                : user.role === 'GUARANTOR'
+                ? '/guarantor/dashboard'
+                : '/rider'
+            }
+            className="flex items-center gap-2.5 group"
+          >
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md group-hover:bg-emerald-500 transition-colors">
               <Bike className="w-6 h-6" />
             </div>
@@ -97,6 +106,18 @@ export default function Navbar({ user }: NavbarProps) {
                   <span>New Agreement</span>
                 </Link>
               </>
+            ) : user.role === 'GUARANTOR' ? (
+              <Link
+                href="/guarantor/dashboard"
+                className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                  pathname === '/guarantor/dashboard'
+                    ? 'bg-slate-800 text-amber-400 border border-slate-700'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-amber-400" />
+                <span>Guarantor Portal</span>
+              </Link>
             ) : (
               <Link
                 href="/rider"

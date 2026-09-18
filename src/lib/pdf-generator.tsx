@@ -321,3 +321,220 @@ export async function generateStatementPDFBuffer(agreement: StatementPDFProps['a
   const buffer = await renderToBuffer(doc);
   return buffer;
 }
+
+export interface LegalNoticePDFProps {
+  agreement: {
+    id: string;
+    ownerName: string;
+    ownerPhone: string;
+    guarantor1Name?: string | null;
+    guarantor1Phone?: string | null;
+    guarantor2Name?: string | null;
+    guarantor2Phone?: string | null;
+    hirer: {
+      name: string;
+      phone: string;
+      email?: string | null;
+    };
+    vehicle: {
+      makeModel: string;
+      registrationNo: string;
+      chassisNo?: string | null;
+      engineNo?: string | null;
+      colorYear?: string | null;
+    };
+    summary: {
+      hirePurchasePrice: number;
+      totalPaid: number;
+      balanceRemaining: number;
+      enableLateFee: boolean;
+      accumulatedLateFee: number;
+      totalAmountDue: number;
+      statusBadge: {
+        label: string;
+        daysOverdue: number;
+      };
+    };
+  };
+  noticeType: 'DEFAULT' | 'REPOSSESSION';
+}
+
+function LegalNoticeDocument({ agreement, noticeType }: LegalNoticePDFProps) {
+  const isDefault = noticeType === 'DEFAULT';
+  const todayStr = new Date().toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return (
+    <Document>
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text style={styles.title}>
+              {isDefault ? 'FORMAL DEFAULT NOTICE' : 'NOTICE OF REPOSSESSION'}
+            </Text>
+            <Text style={{ fontSize: 9, color: isDefault ? '#c2410c' : '#b91c1c', fontFamily: 'Helvetica-Bold', marginTop: 2 }}>
+              {isDefault ? 'DEMAND LETTER — SECTION 8 CONTRACT BREACH' : 'AUTHORIZATION FOR IMMEDIATE VEHICLE REPOSSESSION'}
+            </Text>
+          </View>
+          <View>
+            <Text style={styles.meta}>Date: {todayStr}</Text>
+            <Text style={styles.meta}>Ref: {agreement.id.slice(-8).toUpperCase()}</Text>
+          </View>
+        </View>
+
+        {/* Notice Target Banner */}
+        <View style={{ backgroundColor: isDefault ? '#fff7ed' : '#fef2f2', borderLeftWidth: 4, borderLeftColor: isDefault ? '#f97316' : '#ef4444', padding: 8, marginBottom: 12 }}>
+          <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: isDefault ? '#9a3412' : '#991b1b' }}>
+            {isDefault
+              ? 'ATTENTION HIRER & GUARANTOR: FINAL NOTICE TO SETTLE OVERDUE ARREARS'
+              : 'OFFICIAL NOTICE OF REPOSSESSION & REVOCATION OF POSSESSION RIGHTS'}
+          </Text>
+        </View>
+
+        {/* Parties Details */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>1. CONTRACT PARTIES & GUARANTOR DETAILS</Text>
+          <View style={styles.row}>
+            <View style={styles.col2}>
+              <Text style={styles.label}>HIRER (RIDER):</Text>
+              <Text style={styles.value}>{agreement.hirer.name}</Text>
+              <Text style={styles.value}>Phone: {agreement.hirer.phone}</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>VEHICLE OWNER:</Text>
+              <Text style={styles.value}>{agreement.ownerName}</Text>
+              <Text style={styles.value}>Phone: {agreement.ownerPhone}</Text>
+            </View>
+          </View>
+          <View style={{ marginTop: 4 }}>
+            <Text style={styles.label}>GUARANTOR(S):</Text>
+            <Text style={styles.value}>
+              Guarantor 1: {agreement.guarantor1Name || 'N/A'} {agreement.guarantor1Phone ? `(${agreement.guarantor1Phone})` : ''}
+            </Text>
+            {agreement.guarantor2Name && (
+              <Text style={styles.value}>
+                Guarantor 2: {agreement.guarantor2Name} ({agreement.guarantor2Phone || 'N/A'})
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Vehicle Identification */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>2. MOTORCYCLE IDENTIFICATION</Text>
+          <View style={styles.row}>
+            <View style={styles.col3}>
+              <Text style={styles.label}>MAKE & MODEL:</Text>
+              <Text style={styles.value}>{agreement.vehicle.makeModel}</Text>
+            </View>
+            <View style={styles.col3}>
+              <Text style={styles.label}>REGISTRATION NO:</Text>
+              <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#0f172a' }}>{agreement.vehicle.registrationNo}</Text>
+            </View>
+            <View style={styles.col3}>
+              <Text style={styles.label}>COLOR / YEAR:</Text>
+              <Text style={styles.value}>{agreement.vehicle.colorYear || 'N/A'}</Text>
+            </View>
+          </View>
+          <View style={[styles.row, { marginTop: 4 }]}>
+            <View style={styles.col2}>
+              <Text style={styles.label}>CHASSIS NO:</Text>
+              <Text style={styles.value}>{agreement.vehicle.chassisNo || 'N/A'}</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.label}>ENGINE NO:</Text>
+              <Text style={styles.value}>{agreement.vehicle.engineNo || 'N/A'}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Financial Statement */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>3. FINANCIAL BREACH & ARREARS SUMMARY</Text>
+          <View style={styles.row}>
+            <View style={styles.col3}>
+              <Text style={styles.label}>HIRE-PURCHASE PRICE:</Text>
+              <Text style={styles.value}>{formatCedi(agreement.summary.hirePurchasePrice)}</Text>
+            </View>
+            <View style={styles.col3}>
+              <Text style={styles.label}>TOTAL PAID TO DATE:</Text>
+              <Text style={styles.value}>{formatCedi(agreement.summary.totalPaid)}</Text>
+            </View>
+            <View style={styles.col3}>
+              <Text style={styles.label}>BASE BALANCE REMAINING:</Text>
+              <Text style={styles.value}>{formatCedi(agreement.summary.balanceRemaining)}</Text>
+            </View>
+          </View>
+          {agreement.summary.enableLateFee && (
+            <View style={[styles.row, { marginTop: 4 }]}>
+              <View style={styles.col2}>
+                <Text style={styles.label}>ACCRUED LATE FEE PENALTY:</Text>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#c2410c' }}>
+                  {formatCedi(agreement.summary.accumulatedLateFee)}
+                </Text>
+              </View>
+              <View style={styles.col2}>
+                <Text style={styles.label}>TOTAL AMOUNT DUE:</Text>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#b91c1c' }}>
+                  {formatCedi(agreement.summary.totalAmountDue)}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* Formal Legal Declaration & Instructions */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>4. LEGAL TERMS & ACTION REQUIRED (SECTION 8)</Text>
+          {isDefault ? (
+            <Text style={{ fontSize: 8.5, lineHeight: 1.4, color: '#1e293b' }}>
+              TAKE NOTICE that you are in breach of the financial payment schedule under Section 8 of the Work & Pay Hire-Purchase Agreement. As of this date, your account is overdue by {agreement.summary.statusBadge.daysOverdue} days. You are hereby formally requested to settle the full outstanding amount of {formatCedi(agreement.summary.totalAmountDue || agreement.summary.balanceRemaining)} within SEVEN (7) CALENDAR DAYS from the date of this notice. Failure to remedy this default will result in immediate termination of the agreement, revocation of vehicle usage, and physical repossession of the motorcycle without further notice or judicial process.
+            </Text>
+          ) : (
+            <Text style={{ fontSize: 8.5, lineHeight: 1.4, color: '#1e293b' }}>
+              TAKE NOTICE that due to un-remedied default under Section 8 of the Hire-Purchase Agreement, your right to possess and operate the motorcycle ({agreement.vehicle.registrationNo}) is hereby IMMEDIATELY TERMINATED. The Vehicle Owner or designated repossession agents are authorized to locate, secure, and take possession of the motorcycle wherever situated. The Hirer and Guarantors are ordered to surrender the motorcycle, keys, and DVLA documentation immediately. Any resistance or concealment of the vehicle will result in criminal complaint for conversion and recovery of legal expenses.
+            </Text>
+          )}
+        </View>
+
+        {/* Signatures */}
+        <View style={{ marginTop: 20 }}>
+          <View style={styles.row}>
+            <View style={styles.col2}>
+              <Text style={{ fontSize: 8, color: '#64748b', marginBottom: 25 }}>ISSUED & SIGNED BY OWNER:</Text>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 3, width: '80%' }}>
+                {agreement.ownerName}
+              </Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={{ fontSize: 8, color: '#64748b', marginBottom: 25 }}>HIRER / WITNESS ACKNOWLEDGMENT:</Text>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', borderTopWidth: 1, borderTopColor: '#cbd5e1', paddingTop: 3, width: '80%' }}>
+                Signature / Thumbprint
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text>Work & Pay Hire-Purchase Legal Enforcement System — Section 8 Contract Action</Text>
+          <Text>Page 1 of 1</Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+export async function generateLegalNoticePDFBuffer(
+  agreement: LegalNoticePDFProps['agreement'],
+  noticeType: 'DEFAULT' | 'REPOSSESSION'
+): Promise<Buffer> {
+  const doc = <LegalNoticeDocument agreement={agreement} noticeType={noticeType} />;
+  const buffer = await renderToBuffer(doc);
+  return buffer;
+}
+

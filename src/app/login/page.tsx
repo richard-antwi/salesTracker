@@ -47,6 +47,8 @@ export default function LoginPage() {
         router.push('/super-admin');
       } else if (data.user?.role === 'ADMIN') {
         router.push('/admin/dashboard');
+      } else if (data.user?.role === 'GUARANTOR') {
+        router.push('/guarantor/dashboard');
       } else {
         router.push('/rider');
       }

@@ -96,6 +96,10 @@ export async function POST(request: Request) {
       frequency,
       totalInstallments,
       startDate,
+      enableLateFee,
+      lateFeeType,
+      lateFeeAmount,
+      gracePeriodDays,
     } = body;
 
     const orgId = session.role === 'SUPER_ADMIN' ? (targetOrgId || session.organizationId) : session.organizationId;
@@ -219,6 +223,12 @@ export async function POST(request: Request) {
         totalInstallments: parseInt(totalInstallments, 10),
         startDate: new Date(startDate),
         status: 'ACTIVE',
+
+        // Contract Penalty / Late Fee Option
+        enableLateFee: Boolean(enableLateFee),
+        lateFeeType: lateFeeType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FLAT',
+        lateFeeAmount: lateFeeAmount ? parseFloat(String(lateFeeAmount)) : 0,
+        gracePeriodDays: gracePeriodDays ? parseInt(String(gracePeriodDays), 10) : 7,
       },
       include: {
         hirer: true,
