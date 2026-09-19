@@ -184,6 +184,10 @@ export async function POST(request: Request) {
           mustChangePassword: true,
         },
       });
+
+      // Send email/SMS credentials notification to rider
+      const { notifications } = await import('@/lib/notifications');
+      await notifications.sendUserAccountCreated(hirer, assignedPassword);
     } else if (!hirer.organizationId) {
       // Connect existing user to organization
       await prisma.user.update({

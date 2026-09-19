@@ -52,12 +52,8 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, phone, email, password, role } = body;
 
-    if (!name || !phone || !password) {
-      return NextResponse.json({ error: 'Name, phone number, and password are required' }, { status: 400 });
-    }
-
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
+    if (!name || !phone) {
+      return NextResponse.json({ error: 'Name and phone number are required' }, { status: 400 });
     }
 
     const targetRole = role === 'GUARANTOR' ? 'GUARANTOR' : 'ADMIN';
@@ -75,7 +71,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'A user with this phone number already exists' }, { status: 400 });
     }
 
-    const passwordHash = await hashPassword(password);
+    // Generate unique temporary password if not provided
+    const prefix = targetRole === 'GUARANTOR' ? 'WP-GUA-' : 'WP-ADM-';
+    const assignedPassword = password && password.trim().length >= 6
+      ? password.trim()
+      : prefix + Math.random().toString(36).slice(-6).toUpperCase();
+
+    const passwordHash = await hashPassword(assignedPassword);
 
     const newUser = await prisma.user.create({
       data: {
@@ -85,7 +87,7 @@ export async function POST(request: Request) {
         email: email ? email.trim() : null,
         passwordHash,
         role: targetRole,
-        mustChangePassword: false,
+        mustChangePassword: true, // Force password change on first login
       },
       select: {
         id: true,
@@ -98,9 +100,14 @@ export async function POST(request: Request) {
       },
     });
 
+    // Send email/SMS credentials notification
+    const { notifications } = await import('@/lib/notifications');
+    await notifications.sendUserAccountCreated(newUser, assignedPassword);
+
     return NextResponse.json({
       user: newUser,
-      message: `New ${targetRole} account created successfully`,
+      assignedPassword,
+      message: `New ${targetRole} account created successfully. Credentials sent to email.`,
     });
   } catch (error) {
     console.error('Error creating admin user:', error);

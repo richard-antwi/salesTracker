@@ -414,6 +414,49 @@ export class NotificationService {
       text: textMsg,
     });
   }
+
+  // Trigger 7: User Account Created (Sent to Admin, Guarantor, or Rider with credentials)
+  async sendUserAccountCreated(
+    user: { name: string; email?: string | null; phone: string; role: string },
+    temporaryPassword: string
+  ) {
+    const textMsg = `Hello ${user.name}, your ${user.role} account has been created on Work & Pay. Phone: ${user.phone}, Temp Password: ${temporaryPassword}. Log in at ${CONFIG.APP_URL}/login (Password change required on first login).`;
+
+    // 1. Send SMS stub
+    await this.smsProvider.send({
+      to: user.phone,
+      message: textMsg,
+    });
+
+    // 2. Send Email if email address is provided
+    if (user.email) {
+      const htmlMsg = `
+        <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+          <h2 style="color: #059669; margin-top: 0;">Welcome to Work & Pay</h2>
+          <p>Hello <strong>${user.name}</strong>,</p>
+          <p>An account has been created for you on the Work & Pay Hire-Purchase Platform with the role of <strong>${user.role}</strong>.</p>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: #475569;"><strong>Login URL:</strong> <a href="${CONFIG.APP_URL}/login" style="color: #059669;">${CONFIG.APP_URL}/login</a></p>
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: #475569;"><strong>Phone Number:</strong> ${user.phone}</p>
+            <p style="margin: 0; font-size: 13px; color: #475569;"><strong>Temporary Password:</strong> <span style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 14px; color: #0f172a; font-weight: bold;">${temporaryPassword}</span></p>
+          </div>
+          <p style="color: #b91c1c; font-size: 12px; font-weight: bold; background: #fef2f2; padding: 10px; border-radius: 6px; border-left: 4px solid #ef4444;">
+            🔒 Security Notice: You will be required to change your password immediately upon your first login.
+          </p>
+          <p style="margin-top: 20px;">
+            <a href="${CONFIG.APP_URL}/login" style="background: #059669; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Log In to Your Account</a>
+          </p>
+          <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Work & Pay Hire-Purchase Platform</p>
+        </div>
+      `;
+      await this.emailProvider.send({
+        to: user.email,
+        subject: `Welcome to Work & Pay: Your ${user.role} Account Credentials`,
+        html: htmlMsg,
+        text: textMsg,
+      });
+    }
+  }
 }
 
 export const notifications = new NotificationService();

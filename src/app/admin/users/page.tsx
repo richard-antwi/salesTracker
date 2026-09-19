@@ -29,6 +29,13 @@ export default function AdminUsersPage() {
   const [filterRole, setFilterRole] = useState<'ALL' | 'ADMIN' | 'GUARANTOR'>('ALL');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [createdUserNotice, setCreatedUserNotice] = useState<{
+    name: string;
+    phone: string;
+    role: string;
+    password: string;
+    email?: string | null;
+  } | null>(null);
 
   const phoneError = phoneTouched && !isValidGhanaPhone(phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
 
@@ -54,8 +61,8 @@ export default function AdminUsersPage() {
     e.preventDefault();
     setPhoneTouched(true);
 
-    if (!name || !phone || !password) {
-      setError('Please fill in all required fields (Name, Phone, Password).');
+    if (!name || !phone) {
+      setError('Please fill in required fields (Name & Phone).');
       return;
     }
 
@@ -72,12 +79,22 @@ export default function AdminUsersPage() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, password, role }),
+        body: JSON.stringify({ name, phone, email, password: password || undefined, role }),
       });
 
       const data = await res.json();
       if (!res.ok) {
         throw new Error(data.error || 'Failed to create user account');
+      }
+
+      if (data.assignedPassword) {
+        setCreatedUserNotice({
+          name: data.user.name,
+          phone: data.user.phone,
+          role: data.user.role,
+          password: data.assignedPassword,
+          email: data.user.email,
+        });
       }
 
       setSuccess(`${role === 'GUARANTOR' ? 'Guarantor' : 'Admin'} account created successfully for ${data.user.name}`);
@@ -117,6 +134,43 @@ export default function AdminUsersPage() {
             Provision and manage accounts for Fleet Administrators and Guarantors.
           </p>
         </div>
+
+        {/* Created User Credentials Notice Banner */}
+        {createdUserNotice && (
+          <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>Account Created & Login Credentials Dispatched!</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCreatedUserNotice(null)}
+                className="text-xs text-emerald-700 hover:text-emerald-950 font-bold underline"
+              >
+                Dismiss
+              </button>
+            </div>
+            <p className="text-xs text-emerald-800">
+              {createdUserNotice.email
+                ? `An automated email with login credentials has been sent to ${createdUserNotice.email}.`
+                : 'Account generated. Please copy these credentials and share with the user.'}
+            </p>
+            <div className="bg-white border border-emerald-200 rounded-xl p-3.5 text-xs space-y-1.5 font-mono">
+              <div>Account Name: <strong className="text-slate-900">{createdUserNotice.name}</strong> ({createdUserNotice.role})</div>
+              <div>Phone Number: <strong className="text-slate-900">{createdUserNotice.phone}</strong></div>
+              <div>
+                Auto-Generated Temporary Password:{' '}
+                <strong className="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-xs font-mono">
+                  {createdUserNotice.password}
+                </strong>
+              </div>
+              <div className="text-[11px] text-rose-700 font-sans font-semibold pt-1">
+                🔒 User will be forced to change this password on first login.
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick Role Preset Action Buttons */}
         <div className="flex items-center gap-2">
@@ -211,7 +265,7 @@ export default function AdminUsersPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address (Optional)</label>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address (Optional for credentials)</label>
               <input
                 type="email"
                 placeholder="e.g. guarantor@example.com"
@@ -221,14 +275,13 @@ export default function AdminUsersPage() {
               />
             </div>
 
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Account Password <span className="text-rose-500">*</span>
+                Account Password <span className="text-slate-400 font-normal">(Leave blank to auto-generate unique password)</span>
               </label>
               <input
                 type="password"
-                required
-                placeholder="Min 6 characters"
+                placeholder="Leave blank to auto-generate unique password (e.g. WP-GUA-XXXXXX)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
