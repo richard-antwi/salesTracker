@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bike, LogOut, PlusCircle, CreditCard, LayoutDashboard, Shield } from 'lucide-react';
+import { Bike, LogOut, PlusCircle, CreditCard, LayoutDashboard, Shield, TrendingUp } from 'lucide-react';
 
 interface NavbarProps {
   user?: {
@@ -82,6 +82,17 @@ export default function Navbar({ user }: NavbarProps) {
                 >
                   <LayoutDashboard className="w-4 h-4" />
                   <span className="hidden sm:inline">Dashboard</span>
+                </Link>
+                <Link
+                  href="/admin/analytics"
+                  className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                    pathname === '/admin/analytics'
+                      ? 'bg-slate-800 text-emerald-400 border border-slate-700'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  <TrendingUp className="w-4 h-4" />
+                  <span className="hidden sm:inline">Analytics</span>
                 </Link>
                 <Link
                   href="/admin/payments/new"

@@ -457,6 +457,28 @@ export class NotificationService {
       });
     }
   }
+
+  // Trigger 8: Custom Guarantor Email
+  async sendCustomGuarantorEmail(
+    to: string,
+    subject: string,
+    message: string
+  ) {
+    const htmlMsg = `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+        <h2 style="color: #4f46e5; margin-top: 0;">Notice to Guarantor</h2>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0; white-space: pre-wrap; font-family: sans-serif; font-size: 14px; color: #334155;">${message}</div>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Sent by Work & Pay Management</p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to,
+      subject,
+      html: htmlMsg,
+      text: message,
+    });
+  }
 }
 
 export const notifications = new NotificationService();
