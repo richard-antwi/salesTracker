@@ -6,10 +6,10 @@ export async function GET() {
   try {
     const session = await getCurrentSession();
     if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
-      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden: Admin access required' }, { status: 401 });
     }
 
-    const whereClause: any = { role: 'ADMIN' };
+    const whereClause: any = { role: { in: ['ADMIN', 'GUARANTOR'] } };
     if (session.role !== 'SUPER_ADMIN') {
       if (!session.organizationId) {
         return NextResponse.json({ error: 'Forbidden: No organization assigned' }, { status: 403 });
@@ -17,7 +17,7 @@ export async function GET() {
       whereClause.organizationId = session.organizationId;
     }
 
-    const adminUsers = await prisma.user.findMany({
+    const users = await prisma.user.findMany({
       where: whereClause,
       select: {
         id: true,
@@ -31,10 +31,10 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({ users: adminUsers });
+    return NextResponse.json({ users });
   } catch (error) {
-    console.error('Error fetching admin users:', error);
-    return NextResponse.json({ error: 'Failed to fetch admin users' }, { status: 500 });
+    console.error('Error fetching organization users:', error);
+    return NextResponse.json({ error: 'Failed to fetch organization users' }, { status: 500 });
   }
 }
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { name, phone, email, password } = body;
+    const { name, phone, email, password, role } = body;
 
     if (!name || !phone || !password) {
       return NextResponse.json({ error: 'Name, phone number, and password are required' }, { status: 400 });
@@ -59,6 +59,8 @@ export async function POST(request: Request) {
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 });
     }
+
+    const targetRole = role === 'GUARANTOR' ? 'GUARANTOR' : 'ADMIN';
 
     const { isValidGhanaPhone } = await import('@/lib/validation');
     if (!isValidGhanaPhone(phone)) {
@@ -82,7 +84,7 @@ export async function POST(request: Request) {
         phone: phone.trim(),
         email: email ? email.trim() : null,
         passwordHash,
-        role: 'ADMIN',
+        role: targetRole,
         mustChangePassword: false,
       },
       select: {
@@ -98,7 +100,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       user: newUser,
-      message: 'New Admin account created successfully',
+      message: `New ${targetRole} account created successfully`,
     });
   } catch (error) {
     console.error('Error creating admin user:', error);

@@ -25,6 +25,8 @@ export default function AdminUsersPage() {
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'ADMIN' | 'GUARANTOR'>('GUARANTOR');
+  const [filterRole, setFilterRole] = useState<'ALL' | 'ADMIN' | 'GUARANTOR'>('ALL');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -48,7 +50,7 @@ export default function AdminUsersPage() {
     fetchAdminUsers();
   }, []);
 
-  async function handleCreateAdmin(e: React.FormEvent) {
+  async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
     setPhoneTouched(true);
 
@@ -70,15 +72,15 @@ export default function AdminUsersPage() {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, email, password }),
+        body: JSON.stringify({ name, phone, email, password, role }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create admin user');
+        throw new Error(data.error || 'Failed to create user account');
       }
 
-      setSuccess(`Admin account created successfully for ${data.user.name}`);
+      setSuccess(`${role === 'GUARANTOR' ? 'Guarantor' : 'Admin'} account created successfully for ${data.user.name}`);
       setName('');
       setPhone('');
       setPhoneTouched(false);
@@ -86,11 +88,13 @@ export default function AdminUsersPage() {
       setPassword('');
       await fetchAdminUsers();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error creating admin user');
+      setError(err instanceof Error ? err.message : 'Error creating user account');
     } finally {
       setSubmitting(false);
     }
   }
+
+  const filteredUsers = users.filter((u) => (filterRole === 'ALL' ? true : u.role === filterRole));
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
@@ -107,20 +111,67 @@ export default function AdminUsersPage() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
         <div className="border-b border-slate-100 pb-4">
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-emerald-600" /> Admin User Management
+            <Shield className="w-5 h-5 text-emerald-600" /> Organization User & Account Access Management
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Create and manage additional administrator accounts with full fleet management access.
+            Provision and manage accounts for Fleet Administrators and Guarantors.
           </p>
         </div>
 
-        {/* Create Admin Form */}
-        <form onSubmit={handleCreateAdmin} className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
-          <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-            <UserPlus className="w-4 h-4 text-emerald-600" /> Add New Administrator
-          </h3>
+        {/* Quick Role Preset Action Buttons */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setRole('GUARANTOR')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+              role === 'GUARANTOR'
+                ? 'bg-amber-500 text-white border-amber-600 shadow-sm'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Create Guarantor Account</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRole('ADMIN')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 ${
+              role === 'ADMIN'
+                ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <Shield className="w-4 h-4" />
+            <span>Create Fleet Admin Account</span>
+          </button>
+        </div>
+
+        {/* Create User Form */}
+        <form onSubmit={handleCreateUser} className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <UserPlus className="w-4 h-4 text-emerald-600" /> Add New {role === 'GUARANTOR' ? 'Guarantor' : 'Fleet Admin'} Account
+            </h3>
+            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border ${role === 'GUARANTOR' ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-emerald-100 text-emerald-900 border-emerald-300'}`}>
+              Selected Role: {role}
+            </span>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Account Role <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value as 'ADMIN' | 'GUARANTOR')}
+                className="w-full bg-white border border-slate-200 rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
+              >
+                <option value="GUARANTOR">GUARANTOR (Read-Only Portal Access for Hirer Guarantor)</option>
+                <option value="ADMIN">ADMIN (Full Fleet Management Access)</option>
+              </select>
+            </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Full Name <span className="text-rose-500">*</span>
@@ -128,7 +179,7 @@ export default function AdminUsersPage() {
               <input
                 type="text"
                 required
-                placeholder="e.g. Kwame Mensah"
+                placeholder={role === 'GUARANTOR' ? 'e.g. Kofi Guarantor' : 'e.g. Kwame Admin'}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -137,12 +188,12 @@ export default function AdminUsersPage() {
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Phone Number <span className="text-rose-500">*</span>
+                Phone Number (Ghana 10-digit) <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 required
-                placeholder="e.g. 0244123456"
+                placeholder="e.g. 0208889900"
                 value={phone}
                 onChange={(e) => {
                   setPhone(e.target.value);
@@ -163,7 +214,7 @@ export default function AdminUsersPage() {
               <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address (Optional)</label>
               <input
                 type="email"
-                placeholder="e.g. kwame@workandpay.com"
+                placeholder="e.g. guarantor@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-white border border-slate-200 rounded-xl text-xs p-2.5 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
@@ -203,32 +254,65 @@ export default function AdminUsersPage() {
             <button
               type="submit"
               disabled={submitting}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-md transition-colors disabled:opacity-50 inline-flex items-center gap-1.5"
+              className={`${role === 'GUARANTOR' ? 'bg-amber-600 hover:bg-amber-500' : 'bg-emerald-600 hover:bg-emerald-500'} text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-md transition-colors disabled:opacity-50 inline-flex items-center gap-1.5`}
             >
               <UserPlus className="w-4 h-4" />
-              <span>{submitting ? 'Creating...' : 'Create Admin Account'}</span>
+              <span>{submitting ? 'Creating Account...' : `Create ${role === 'GUARANTOR' ? 'Guarantor' : 'Admin'} Account`}</span>
             </button>
           </div>
         </form>
 
-        {/* Existing Admin Accounts List */}
+        {/* User Accounts List */}
         <div className="space-y-3 pt-4 border-t border-slate-100">
-          <h3 className="text-sm font-bold text-slate-900">Current Administrator Accounts</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-900">Registered Accounts</h3>
+            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setFilterRole('ALL')}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filterRole === 'ALL' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                All ({users.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterRole('ADMIN')}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filterRole === 'ADMIN' ? 'bg-white text-emerald-700 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Admins ({users.filter((u) => u.role === 'ADMIN').length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilterRole('GUARANTOR')}
+                className={`px-2.5 py-1 rounded-lg transition-colors ${filterRole === 'GUARANTOR' ? 'bg-white text-amber-700 shadow-xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Guarantors ({users.filter((u) => u.role === 'GUARANTOR').length})
+              </button>
+            </div>
+          </div>
 
           {loading ? (
-            <div className="text-center py-6 text-slate-400 text-xs">Loading admin accounts...</div>
+            <div className="text-center py-6 text-slate-400 text-xs">Loading user accounts...</div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="text-center py-6 text-slate-400 text-xs italic bg-slate-50 rounded-xl">No accounts found for this role filter.</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <div key={u.id} className="bg-slate-50 border border-slate-200 p-3.5 rounded-xl space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="font-extrabold text-slate-900 text-sm">{u.name}</span>
-                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-emerald-200">
-                      ADMIN
+                    <span
+                      className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${
+                        u.role === 'GUARANTOR'
+                          ? 'bg-amber-100 text-amber-900 border-amber-200'
+                          : 'bg-emerald-100 text-emerald-900 border-emerald-200'
+                      }`}
+                    >
+                      {u.role}
                     </span>
                   </div>
                   <div className="text-xs text-slate-500 space-y-0.5">
-                    <p className="flex items-center gap-1">
+                    <p className="flex items-center gap-1 font-mono">
                       <Phone className="w-3 h-3 text-slate-400" /> {u.phone}
                     </p>
                     {u.email && (

@@ -1,14 +1,15 @@
-const CACHE_NAME = 'work-and-pay-cache-v1';
+const CACHE_NAME = 'work-and-pay-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/login',
   '/rider',
   '/guarantor/dashboard',
+  '/admin/dashboard',
   '/manifest.json',
   '/favicon.ico',
 ];
 
-// Install event: cache app shell assets
+// Install event: pre-cache core app shell assets
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -19,7 +20,7 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activate event: clean up old caches
+// Activate event: clean up old cache versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -38,18 +39,16 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event: Network-first with Cache Fallback for offline resilience
 self.addEventListener('fetch', (event) => {
-  // Only intercept GET requests
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
 
-  // Ignore Next.js HMR & hot-reload requests during dev
-  if (url.pathname.startsWith('/_next/webpack-hmr')) return;
+  // Ignore browser extension schemes and Next.js dev HMR
+  if (url.protocol.startsWith('chrome-extension') || url.pathname.startsWith('/_next/webpack-hmr')) return;
 
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
-        // Clone & save successful GET responses to cache
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -58,17 +57,38 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       })
-      .catch(() => {
-        // Fallback to cache when offline
-        console.log('[SW] Network request failed. Serving from cache:', event.request.url);
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Fallback to home/offline cached page if available
-          if (event.request.headers.get('accept')?.includes('text/html')) {
-            return caches.match('/rider') || caches.match('/login');
-          }
+      .catch(async () => {
+        console.log('[SW] Offline fetch fallback for:', event.request.url);
+
+        // 1. Try exact match
+        const directMatch = await caches.match(event.request);
+        if (directMatch) return directMatch;
+
+        // 2. Try match ignoring query parameters (e.g. Next.js _rsc parameters)
+        const ignoreSearchMatch = await caches.match(event.request, { ignoreSearch: true });
+        if (ignoreSearchMatch) return ignoreSearchMatch;
+
+        // 3. Fallback for navigation or HTML / RSC component requests
+        const isHtmlOrRsc =
+          event.request.mode === 'navigate' ||
+          event.request.headers.get('accept')?.includes('text/html') ||
+          event.request.headers.get('accept')?.includes('text/x-component') ||
+          event.request.headers.has('RSC');
+
+        if (isHtmlOrRsc) {
+          const fallbackPage =
+            (await caches.match(url.pathname, { ignoreSearch: true })) ||
+            (await caches.match('/rider')) ||
+            (await caches.match('/guarantor/dashboard')) ||
+            (await caches.match('/login')) ||
+            (await caches.match('/'));
+          if (fallbackPage) return fallbackPage;
+        }
+
+        return new Response('Offline: Connection unavailable', {
+          status: 533,
+          statusText: 'Offline',
+          headers: { 'Content-Type': 'text/plain' },
         });
       })
   );

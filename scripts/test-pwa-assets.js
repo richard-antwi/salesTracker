@@ -44,7 +44,7 @@ async function runPwaTests() {
   const swContent = fs.readFileSync(swPath, 'utf-8');
   assert(swContent.includes("addEventListener('install'"), 'Service Worker contains install lifecycle event');
   assert(swContent.includes("addEventListener('fetch'"), 'Service Worker contains fetch network handler');
-  assert(swContent.includes('work-and-pay-cache-v1'), 'Service Worker defines cache version key');
+  assert(swContent.includes('work-and-pay-cache'), 'Service Worker defines cache version key');
 
   // 2. HTTP Endpoint Assertions against local Next.js server
   function fetchEndpoint(urlPath) {
