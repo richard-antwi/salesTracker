@@ -26,11 +26,9 @@ export async function POST() {
       
       const passwordHash = await hashPassword('DEMO');
       
-      // Upsert Demo User
-      demoUser = await prisma.user.upsert({
-        where: { phone: demoPhone },
-        update: { passwordHash, mustChangePassword: false, email: demoEmail, role: 'ADMIN', organizationId: org.id },
-        create: {
+      // Create Demo User
+      demoUser = await prisma.user.create({
+        data: {
           organizationId: org.id,
           name: 'Demo Admin',
           phone: demoPhone,
@@ -42,20 +40,16 @@ export async function POST() {
       });
 
       // Populate dummy data
-      const vehicle = await prisma.vehicle.upsert({
-        where: { registrationNo_organizationId: { registrationNo: 'M-24-GL 1234', organizationId: org.id } },
-        update: {},
-        create: {
+      const vehicle = await prisma.vehicle.create({
+        data: {
           organizationId: org.id,
           makeModel: 'Haojue 110',
           registrationNo: 'M-24-GL 1234',
         }
       });
 
-      const rider = await prisma.user.upsert({
-        where: { email: 'rider@demo.com' },
-        update: { organizationId: org.id },
-        create: {
+      const rider = await prisma.user.create({
+        data: {
           organizationId: org.id,
           name: 'Demo Rider',
           phone: '0550000001',
@@ -65,33 +59,27 @@ export async function POST() {
         }
       });
 
-      const existingAgreement = await prisma.agreement.findFirst({
-        where: { vehicleId: vehicle.id }
+      await prisma.agreement.create({
+        data: {
+          organizationId: org.id,
+          ownerName: 'Demo Admin',
+          ownerPhone: demoPhone,
+          hirerId: rider.id,
+          vehicleId: vehicle.id,
+          cashPrice: 15000,
+          hirePurchasePrice: 20000,
+          installmentAmount: 400,
+          frequency: 'WEEKLY',
+          totalInstallments: 50,
+          startDate: new Date(),
+          status: 'ACTIVE',
+        }
       });
-
-      if (!existingAgreement) {
-        await prisma.agreement.create({
-          data: {
-            organizationId: org.id,
-            ownerName: 'Demo Admin',
-            ownerPhone: demoPhone,
-            hirerId: rider.id,
-            vehicleId: vehicle.id,
-            cashPrice: 15000,
-            hirePurchasePrice: 20000,
-            installmentAmount: 400,
-            frequency: 'WEEKLY',
-            totalInstallments: 50,
-            startDate: new Date(),
-            status: 'ACTIVE',
-          }
-        });
-      }
     }
 
     return NextResponse.json({ success: true, phone: demoUser.phone, password: 'DEMO' });
   } catch (error: any) {
     console.error('Demo Init Error:', error);
-    return NextResponse.json({ error: 'Failed to initialize demo sandbox', details: error.message, stack: error.stack }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to initialize demo sandbox' }, { status: 500 });
   }
 }
