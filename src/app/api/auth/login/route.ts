@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { comparePassword, setAuthCookie, UserSession } from '@/lib/auth';
-import otplib from 'otplib';
-
-const { authenticator } = otplib;
+import * as twofactor from 'node-2fa';
 
 export async function POST(request: Request) {
   try {
@@ -63,7 +61,8 @@ export async function POST(request: Request) {
         }, { status: 403 }); // 403 or 401
       }
 
-      const isValid = authenticator.verify({ token: body.token, secret: user.twoFactorSecret });
+      const result = twofactor.verifyToken(user.twoFactorSecret, body.token);
+      const isValid = result !== null;
       
       if (!isValid) {
         return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 401 });

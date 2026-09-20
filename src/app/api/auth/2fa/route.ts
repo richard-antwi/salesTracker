@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import otplib from 'otplib';
+import * as twofactor from 'node-2fa';
 import QRCode from 'qrcode';
-
-const { authenticator } = otplib;
 
 export async function POST(request: Request) {
   try {
@@ -21,8 +19,9 @@ export async function POST(request: Request) {
 
     // Action 1: Setup 2FA (Generate Secret and QR Code)
     if (action === 'setup') {
-      const secret = authenticator.generateSecret();
-      const otpauth = authenticator.keyuri(user.email || user.phone, 'Work&Pay', secret);
+      const newSecret = twofactor.generateSecret({ name: 'Work&Pay', account: user.email || user.phone });
+      const secret = newSecret.secret;
+      const otpauth = newSecret.uri;
       const qrCodeUrl = await QRCode.toDataURL(otpauth);
 
       return NextResponse.json({
@@ -40,7 +39,8 @@ export async function POST(request: Request) {
          return NextResponse.json({ error: 'Missing temporary secret' }, { status: 400 });
       }
 
-      const isValid = authenticator.verify({ token, secret: tempSecret });
+      const result = twofactor.verifyToken(tempSecret, token);
+      const isValid = result !== null;
 
       if (!isValid) {
         return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 400 });
