@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-const { authenticator } = require('otplib');
+import { authenticator } from 'otplib';
 import QRCode from 'qrcode';
 
 export async function POST(request: Request) {

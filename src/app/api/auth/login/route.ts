@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { comparePassword, setAuthCookie, UserSession } from '@/lib/auth';
+import { authenticator } from 'otplib';
 
 export async function POST(request: Request) {
   try {
@@ -60,7 +61,6 @@ export async function POST(request: Request) {
         }, { status: 403 }); // 403 or 401
       }
 
-      const { authenticator } = require('otplib');
       const isValid = authenticator.verify({ token: body.token, secret: user.twoFactorSecret });
       
       if (!isValid) {
