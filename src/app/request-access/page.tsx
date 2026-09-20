@@ -2,10 +2,12 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bike, ShieldCheck, ArrowLeft, CheckCircle2, AlertCircle, Building2, User, Phone, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { isValidGhanaPhone } from '@/lib/validation';
 
 export default function RequestAccessPage() {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
@@ -57,10 +59,22 @@ export default function RequestAccessPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit request');
+        throw new Error(data.error || 'Failed to create organization');
       }
 
-      setSubmittedSuccess(true);
+      // Auto-login the user using custom auth endpoint
+      const loginRes = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: contactPhone, password: adminPassword }),
+      });
+
+      if (!loginRes.ok) {
+        throw new Error('Account created, but failed to log in automatically. Please go to login page.');
+      }
+
+      router.push('/admin/dashboard');
+      router.refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred during submission');
     } finally {
@@ -79,7 +93,7 @@ export default function RequestAccessPage() {
             </div>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight text-white">Work & Pay Platform</h1>
-          <p className="text-xs text-slate-400">Request Organization Access for your Fleet</p>
+          <p className="text-xs text-slate-400">Create an Organization for your Fleet</p>
         </div>
 
         {submittedSuccess ? (
@@ -227,7 +241,7 @@ export default function RequestAccessPage() {
                 className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
               >
                 <ShieldCheck className="w-4 h-4" />
-                <span>{loading ? 'Submitting Application...' : 'Submit Access Request'}</span>
+                <span>{loading ? 'Creating Account...' : 'Create Organization'}</span>
               </button>
 
               <div className="pt-2 text-center">

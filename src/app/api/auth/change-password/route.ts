@@ -9,6 +9,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    if (session.phone === '0000000000') {
+      return NextResponse.json({ error: 'Sandbox demo accounts cannot change passwords.' }, { status: 403 });
+    }
+
     const { newPassword } = await request.json();
     if (!newPassword || newPassword.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });

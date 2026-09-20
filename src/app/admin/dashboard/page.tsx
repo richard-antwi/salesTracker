@@ -18,6 +18,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
+import TourGuide from '@/components/TourGuide';
 
 interface AgreementSummaryItem {
   id: string;
@@ -166,6 +167,8 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
+      <TourGuide agreementsCount={totalAgreements} />
+      
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -323,9 +326,26 @@ export default function AdminDashboardPage() {
 
         {loading ? (
           <div className="text-center py-12 text-slate-400 text-sm">Loading agreements portfolio...</div>
+        ) : agreements.length === 0 ? (
+          <div className="text-center py-16 px-4 bg-slate-50/50 rounded-2xl border border-slate-200 border-dashed max-w-2xl mx-auto">
+            <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+              <Bike className="w-10 h-10 text-emerald-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-3">Your fleet is empty!</h2>
+            <p className="text-slate-500 mb-8 max-w-md mx-auto text-sm leading-relaxed">
+              Welcome to your Work & Pay dashboard! You haven't added any motorcycles or riders yet. Click below to register your first rider and start tracking payments automatically.
+            </p>
+            <Link
+              href="/admin/agreements/new"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg transition-all hover:scale-105"
+            >
+              <Plus className="w-5 h-5" />
+              Add First Motorcycle
+            </Link>
+          </div>
         ) : filteredAgreements.length === 0 ? (
           <div className="text-center py-12 space-y-3">
-            <Bike className="w-10 h-10 text-slate-300 mx-auto" />
+            <Search className="w-10 h-10 text-slate-300 mx-auto" />
             <p className="text-sm font-medium text-slate-600">No agreements match your search or filter criteria.</p>
           </div>
         ) : (

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { getCurrentSession } from '@/lib/auth';
 import Link from 'next/link';
 import { Bike, ShieldCheck, CreditCard, TrendingUp, ChevronRight, Lock, CheckCircle2 } from 'lucide-react';
+import DemoButton from '@/components/DemoButton';
 
 export default async function HomePage() {
   const session = await getCurrentSession();
@@ -36,18 +37,13 @@ export default async function HomePage() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
-              href="/login" 
+              href="/request-access" 
               className="w-full sm:w-auto px-8 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white text-lg font-bold rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:scale-105 flex items-center justify-center gap-2"
             >
-              Login to Dashboard
+              Create Organization
               <ChevronRight className="w-5 h-5" />
             </Link>
-            <Link 
-              href="/request-access" 
-              className="w-full sm:w-auto px-8 py-3.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-lg font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-            >
-              Request Access
-            </Link>
+            <DemoButton />
           </div>
         </div>
       </section>

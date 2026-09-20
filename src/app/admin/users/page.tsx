@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, UserPlus, Shield, Phone, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, UserPlus, Shield, Phone, Mail, CheckCircle2, AlertCircle, Users } from 'lucide-react';
 import { isValidGhanaPhone } from '@/lib/validation';
 
 interface AdminUser {
@@ -347,7 +347,13 @@ export default function AdminUsersPage() {
           {loading ? (
             <div className="text-center py-6 text-slate-400 text-xs">Loading user accounts...</div>
           ) : filteredUsers.length === 0 ? (
-            <div className="text-center py-6 text-slate-400 text-xs italic bg-slate-50 rounded-xl">No accounts found for this role filter.</div>
+            <div className="text-center py-10 px-4 bg-slate-50/50 rounded-2xl border border-slate-200 border-dashed">
+              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Users className="w-8 h-8 text-slate-400" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-900 mb-1">No Accounts Found</h3>
+              <p className="text-xs text-slate-500">There are no {filterRole !== 'ALL' ? filterRole.toLowerCase() : ''} accounts matching your criteria.</p>
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {filteredUsers.map((u) => (

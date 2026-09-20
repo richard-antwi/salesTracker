@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         data: {
           name: name.trim(),
           slug,
-          status: 'PENDING',
+          status: 'APPROVED',
           contactEmail: emailClean,
           contactPhone: phoneClean,
         },
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       organization,
-      message: 'Access request submitted successfully! The platform operator will review and approve your account.',
+      message: 'Account created successfully! Redirecting you to your dashboard...',
     });
   } catch (error: any) {
     console.error('Error submitting organization request:', error);
