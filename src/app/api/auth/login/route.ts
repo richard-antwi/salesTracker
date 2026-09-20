@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { comparePassword, setAuthCookie, UserSession } from '@/lib/auth';
-import { authenticator } from 'otplib';
+import otplib from 'otplib';
+
+const { authenticator } = otplib;
 
 export async function POST(request: Request) {
   try {
