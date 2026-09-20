@@ -17,6 +17,8 @@ import {
   FileCheck,
   ShieldAlert,
   Archive,
+  X,
+  CreditCard,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
 
@@ -81,6 +83,34 @@ export default function RiderMyAgreementPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Payment Modal State
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [paying, setPaying] = useState(false);
+  const [payFeedback, setPayFeedback] = useState<{type: 'error' | 'success', text: string} | null>(null);
+
+  async function handleDigitalPay(e: React.FormEvent) {
+    e.preventDefault();
+    if (!agreement) return;
+    setPaying(true);
+    setPayFeedback(null);
+    try {
+      const res = await fetch(`/api/agreements/${agreement.id}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: payAmount })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Payment failed');
+      
+      // Redirect to Paystack Checkout URL
+      window.location.href = data.authorizationUrl;
+    } catch (err: unknown) {
+      setPayFeedback({ type: 'error', text: err instanceof Error ? err.message : 'Error processing payment' });
+      setPaying(false);
+    }
+  }
 
   useEffect(() => {
     async function fetchRiderAgreement() {
@@ -231,6 +261,21 @@ export default function RiderMyAgreementPage() {
                 <span>Accrued Overdue Late Fee ({summary.lateFeeType === 'PERCENTAGE' ? `${summary.lateFeeAmount}%` : formatCedi(summary.lateFeeAmount || 0)})</span>
               </div>
               <span className="font-extrabold text-white font-mono">{formatCedi(summary.accumulatedLateFee || 0)}</span>
+            </div>
+          )}
+
+          {/* Pay Now Button (Hidden by default until Go-Live) */}
+          {process.env.NEXT_PUBLIC_ENABLE_PAYSTACK === 'true' && summary.balanceRemaining > 0 && (
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  setPayAmount(agreement.installmentAmount.toString());
+                  setShowPayModal(true);
+                }}
+                className="w-full bg-[#09A5DB] hover:bg-[#0785b3] text-white font-extrabold text-sm py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-5 h-5" /> Pay Online (Card / MoMo)
+              </button>
             </div>
           )}
         </div>
@@ -432,6 +477,65 @@ export default function RiderMyAgreementPage() {
           </a>
         </div>
       </div>
+
+      {/* Paystack Modal */}
+      {showPayModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 border border-slate-200 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#09A5DB]/10 rounded-full blur-2xl pointer-events-none" />
+            
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 relative z-10">
+              <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-[#09A5DB]" /> Digital Payment
+              </h3>
+              <button
+                onClick={() => setShowPayModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleDigitalPay} className="space-y-4 relative z-10">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Amount to Pay (GHS)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 font-bold text-slate-400">₵</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    required
+                    value={payAmount}
+                    onChange={(e) => setPayAmount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl text-lg font-black pl-8 pr-3 py-2 focus:ring-2 focus:ring-[#09A5DB] outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {payFeedback && (
+                <p className={`text-xs p-3 rounded-xl border font-bold ${
+                  payFeedback.type === 'error' 
+                    ? 'text-rose-700 bg-rose-50 border-rose-200' 
+                    : 'text-emerald-800 bg-emerald-50 border-emerald-200'
+                }`}>
+                  {payFeedback.text}
+                </p>
+              )}
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={paying}
+                  className="w-full bg-[#09A5DB] hover:bg-[#0785b3] text-white font-extrabold text-sm py-3 rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {paying ? 'Connecting to Secure Gateway...' : 'Proceed to Checkout'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

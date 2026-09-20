@@ -51,6 +51,23 @@ export async function POST(request: Request) {
       }
     }
 
+    // 2FA Enforcement
+    if (user.twoFactorSecret) {
+      if (!body.token) {
+        return NextResponse.json({ 
+          requires2FA: true, 
+          message: '2FA token required' 
+        }, { status: 403 }); // 403 or 401
+      }
+
+      const { authenticator } = require('otplib');
+      const isValid = authenticator.verify({ token: body.token, secret: user.twoFactorSecret });
+      
+      if (!isValid) {
+        return NextResponse.json({ error: 'Invalid 2FA code' }, { status: 401 });
+      }
+    }
+
     const sessionPayload: UserSession = {
       userId: user.id,
       organizationId: user.organizationId,

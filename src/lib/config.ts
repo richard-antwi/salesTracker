@@ -24,4 +24,9 @@ export const CONFIG = {
   ADMIN_EMAIL: process.env.ADMIN_EMAIL || 'admin@workandpay.gh',
   CRON_SECRET: process.env.CRON_SECRET || 'work_and_pay_cron_secret_2026',
   APP_URL: process.env.NEXT_PUBLIC_APP_URL || 'https://salestrackergh.vercel.app',
+
+  // Paystack Configuration
+  ENABLE_PAYSTACK: process.env.NEXT_PUBLIC_ENABLE_PAYSTACK === 'true',
+  PAYSTACK_PUBLIC_KEY: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || '',
+  PAYSTACK_SECRET_KEY: process.env.PAYSTACK_SECRET_KEY || '',
 };

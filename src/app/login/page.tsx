@@ -12,6 +12,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // 2FA State
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+
   // First Login Password Change state
   const [mustChangePwdUser, setMustChangePwdUser] = useState<boolean>(false);
   const [newPassword, setNewPassword] = useState('');
@@ -28,10 +32,17 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password }),
+        body: JSON.stringify({ identifier, password, token: twoFactorToken }),
       });
 
       const data = await res.json();
+      
+      if (res.status === 403 && data.requires2FA) {
+        setRequires2FA(true);
+        setLoading(false);
+        return;
+      }
+      
       if (!res.ok) {
         throw new Error(data.error || 'Login failed');
       }
@@ -113,7 +124,61 @@ export default function LoginPage() {
           <p className="text-slate-400 text-sm mt-1">Motorcycle Hire-Purchase Platform — Ghana</p>
         </div>
 
-        {mustChangePwdUser ? (
+        {requires2FA ? (
+          /* 2FA Token Screen */
+          <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+            <div className="flex flex-col items-center gap-3 text-emerald-400 mb-6 text-center">
+              <Shield className="w-10 h-10" />
+              <div>
+                <h2 className="text-lg font-bold text-white">Two-Factor Authentication</h2>
+                <p className="text-xs text-slate-400 mt-1">Enter the 6-digit code from your authenticator app</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              {error && (
+                <div className="bg-rose-950/60 border border-rose-800 text-rose-300 px-3 py-2.5 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div>
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={twoFactorToken}
+                  onChange={(e) => setTwoFactorToken(e.target.value.replace(/\D/g, ''))}
+                  placeholder="000000"
+                  required
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-xl bg-slate-800 border border-slate-700 text-white placeholder-slate-500 text-center text-2xl tracking-[0.5em] font-mono focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || twoFactorToken.length !== 6}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 mt-4"
+              >
+                {loading ? 'Verifying...' : 'Verify & Sign In'}
+                <ArrowRight className="w-4 h-4" />
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setRequires2FA(false);
+                  setTwoFactorToken('');
+                  setError('');
+                }}
+                className="w-full text-xs text-slate-400 hover:text-white pt-3 transition-colors"
+              >
+                &larr; Back to login
+              </button>
+            </form>
+          </div>
+        ) : mustChangePwdUser ? (
           /* First-Time Login Password Change Screen (Per Requirement #1) */
           <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-3 text-amber-400 mb-4">

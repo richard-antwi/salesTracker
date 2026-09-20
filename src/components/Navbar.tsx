@@ -45,7 +45,7 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md group-hover:bg-emerald-500 transition-colors">
               <Bike className="w-6 h-6" />
             </div>
-            <div>
+            <div className="hidden sm:block">
               <span className="font-bold text-lg text-white tracking-tight flex items-center gap-1.5">
                 Work & Pay
               </span>
@@ -62,7 +62,7 @@ export default function Navbar({ user }: NavbarProps) {
                 {user.role === 'SUPER_ADMIN' && (
                   <Link
                     href="/super-admin"
-                    className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                    className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold items-center gap-1.5 transition-colors ${
                       pathname === '/super-admin'
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                         : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20'
@@ -85,7 +85,7 @@ export default function Navbar({ user }: NavbarProps) {
                 </Link>
                 <Link
                   href="/admin/analytics"
-                  className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors ${
+                  className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
                     pathname === '/admin/analytics'
                       ? 'bg-slate-800 text-emerald-400 border border-slate-700'
                       : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -93,6 +93,17 @@ export default function Navbar({ user }: NavbarProps) {
                 >
                   <TrendingUp className="w-4 h-4" />
                   <span className="hidden sm:inline">Analytics</span>
+                </Link>
+                <Link
+                  href="/admin/settings"
+                  className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
+                    pathname === '/admin/settings'
+                      ? 'bg-slate-800 text-emerald-400 border border-slate-700'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  }`}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline">Security</span>
                 </Link>
                 <Link
                   href="/admin/payments/new"
