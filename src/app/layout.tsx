@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { getCurrentSession } from '@/lib/auth';
 import Navbar from '@/components/Navbar';
-import PwaRegister from '@/components/PwaRegister';
 
 export const metadata: Metadata = {
   title: 'Work & Pay — Motorcycle Hire-Purchase Platform',
@@ -36,7 +35,6 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
-        <PwaRegister />
         <Navbar user={session} />
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
           {children}
