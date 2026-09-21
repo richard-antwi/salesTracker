@@ -49,13 +49,23 @@ export async function POST(request: Request) {
       const newPeriodEnd = new Date(currentEnd);
       newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
 
-      await prisma.organization.update({
-        where: { id: org.id },
-        data: {
-          subscriptionStatus: 'ACTIVE',
-          currentPeriodEnd: newPeriodEnd,
-        }
-      });
+      await prisma.$transaction([
+        prisma.organization.update({
+          where: { id: org.id },
+          data: {
+            subscriptionStatus: 'ACTIVE',
+            currentPeriodEnd: newPeriodEnd,
+          }
+        }),
+        prisma.subscriptionPayment.create({
+          data: {
+            organizationId: org.id,
+            amount: paymentAmount,
+            reference: reference,
+            status: 'SUCCESS'
+          }
+        })
+      ]);
 
       return NextResponse.json({ received: true });
     }
