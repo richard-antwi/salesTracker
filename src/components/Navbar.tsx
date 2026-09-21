@@ -74,21 +74,33 @@ export default function Navbar({ user }: NavbarProps) {
             ) : (
               // AUTHENTICATED NAVBAR
               <>
-                {isAdmin ? (
+                {user.role === 'SUPER_ADMIN' ? (
                   <>
-                    {user.role === 'SUPER_ADMIN' && (
-                      <Link
-                        href="/super-admin"
-                        className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold items-center gap-1.5 transition-colors ${
-                          pathname === '/super-admin'
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20'
-                        }`}
-                      >
-                        <Shield className="w-4 h-4 text-amber-400" />
-                        <span>Super Admin</span>
-                      </Link>
-                    )}
+                    <Link
+                      href="/super-admin"
+                      className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors ${
+                        pathname === '/super-admin'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/20'
+                      }`}
+                    >
+                      <Shield className="w-4 h-4 text-amber-400" />
+                      <span>Platform Control</span>
+                    </Link>
+                    <Link
+                      href="/super-admin/finance"
+                      className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
+                        pathname === '/super-admin/finance'
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10'
+                      }`}
+                    >
+                      <CreditCard className="w-4 h-4" />
+                      <span>Finance</span>
+                    </Link>
+                  </>
+                ) : user.role === 'ADMIN' ? (
+                  <>
                     <Link
                       href="/admin/dashboard"
                       className={`px-3 py-2 rounded-lg text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors ${
