@@ -193,50 +193,99 @@ export default function SuperAdminDashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {approvedOrgs.map((org) => (
-              <div key={org.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-bold text-white">{org.name}</h3>
-                    <span className="text-[11px] text-slate-400 font-mono">slug: {org.slug}</span>
-                  </div>
-                  <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
-                    APPROVED
-                  </span>
-                </div>
+            {approvedOrgs.map((org) => {
+              // Add billing override handler
+              const handleBillingOverride = async (action: string) => {
+                setUpdatingId(org.id);
+                try {
+                  const res = await fetch(`/api/super-admin/organizations/${org.id}/billing`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) throw new Error(data.error || 'Failed to update billing');
+                  await fetchOrganizations();
+                } catch (err: any) {
+                  alert(err.message);
+                } finally {
+                  setUpdatingId(null);
+                }
+              };
 
-                {/* Fleet Statistics */}
-                <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800">
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <Users className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Users: <strong className="text-white">{org._count.users}</strong></span>
+              return (
+                <div key={org.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">{org.name}</h3>
+                      <span className="text-[11px] text-slate-400 font-mono">slug: {org.slug}</span>
+                    </div>
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                      APPROVED
+                    </span>
                   </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <Bike className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Vehicles: <strong className="text-white">{org._count.vehicles}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <FileText className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Agreements: <strong className="text-white">{org._count.agreements}</strong></span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-slate-300">
-                    <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                    <span>Payments: <strong className="text-white">{org._count.payments}</strong></span>
-                  </div>
-                </div>
 
-                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800">
-                  <span className="text-slate-500 text-[10px]">{org.contactEmail}</span>
-                  <button
-                    onClick={() => handleStatusChange(org.id, 'SUSPENDED')}
-                    disabled={updatingId === org.id}
-                    className="text-xs text-amber-400 hover:text-amber-300 font-medium"
-                  >
-                    Suspend Fleet
-                  </button>
+                  {/* Fleet Statistics */}
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950/60 p-3 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Users: <strong className="text-white">{org._count?.users || 0}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <Bike className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Vehicles: <strong className="text-white">{org._count?.vehicles || 0}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <FileText className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Agreements: <strong className="text-white">{org._count?.agreements || 0}</strong></span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Payments: <strong className="text-white">{org._count?.payments || 0}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Billing Override Section */}
+                  <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 space-y-2">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Billing Override</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleBillingOverride('GRANT_30_DAYS')}
+                        disabled={updatingId === org.id}
+                        className="text-[10px] px-2 py-1 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded border border-indigo-500/30 transition-colors disabled:opacity-50"
+                      >
+                        +30 Days
+                      </button>
+                      <button
+                        onClick={() => handleBillingOverride('GRANT_LIFETIME')}
+                        disabled={updatingId === org.id}
+                        className="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors disabled:opacity-50"
+                      >
+                        Lifetime Access
+                      </button>
+                      <button
+                        onClick={() => handleBillingOverride('REVOKE_ACCESS')}
+                        disabled={updatingId === org.id}
+                        className="text-[10px] px-2 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded border border-rose-500/30 transition-colors disabled:opacity-50"
+                      >
+                        Revoke Billing
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800">
+                    <span className="text-slate-500 text-[10px]">{org.contactEmail}</span>
+                    <button
+                      onClick={() => handleStatusChange(org.id, 'SUSPENDED')}
+                      disabled={updatingId === org.id}
+                      className="text-[10px] px-2 py-1 bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded font-medium border border-rose-800/50"
+                    >
+                      Suspend Fleet
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
