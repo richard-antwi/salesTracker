@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldAlert, Building2, CheckCircle2, XCircle, AlertTriangle, Users, Bike, FileText, ArrowLeft, RefreshCw, LogOut, Settings } from 'lucide-react';
+import { ShieldAlert, Building2, CheckCircle2, XCircle, AlertTriangle, Users, Bike, FileText, ArrowLeft, RefreshCw, LogOut, Settings, Wallet } from 'lucide-react';
 
 interface OrganizationRecord {
   id: string;
@@ -99,6 +99,12 @@ export default function SuperAdminDashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/super-admin/finance"
+            className="px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+          >
+            <Wallet className="w-3.5 h-3.5" /> Finance
+          </Link>
           <button
             onClick={fetchOrganizations}
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
@@ -214,11 +220,14 @@ export default function SuperAdminDashboardPage() {
               };
 
               return (
-                <div key={org.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <div className="flex items-start justify-between">
+                <div key={org.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4 relative group hover:border-amber-500/30 transition-colors">
+                  {/* Invisible Link Covering the Entire Card */}
+                  <Link href={`/super-admin/organizations/${org.id}`} className="absolute inset-0 z-0"></Link>
+                  
+                  <div className="flex items-start justify-between relative z-10 pointer-events-none">
                     <div>
-                      <h3 className="text-sm font-bold text-white">{org.name}</h3>
-                      <span className="text-[11px] text-slate-400 font-mono">slug: {org.slug}</span>
+                      <h3 className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">{org.name}</h3>
+                      <span className="text-[11px] text-slate-400 font-mono group-hover:text-amber-400/70 transition-colors">slug: {org.slug}</span>
                     </div>
                     <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
                       APPROVED
@@ -246,39 +255,39 @@ export default function SuperAdminDashboardPage() {
                   </div>
 
                   {/* Billing Override Section */}
-                  <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 space-y-2">
+                  <div className="bg-slate-800/40 p-3 rounded-xl border border-slate-700/50 space-y-2 relative z-10">
                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Billing Override</div>
                     <div className="flex flex-wrap gap-2">
                       <button
                         onClick={() => handleBillingOverride('GRANT_30_DAYS')}
                         disabled={updatingId === org.id}
-                        className="text-[10px] px-2 py-1 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded border border-indigo-500/30 transition-colors disabled:opacity-50"
+                        className="text-[10px] px-2 py-1 bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30 rounded border border-indigo-500/30 transition-colors disabled:opacity-50 relative z-20"
                       >
                         +30 Days
                       </button>
                       <button
                         onClick={() => handleBillingOverride('GRANT_LIFETIME')}
                         disabled={updatingId === org.id}
-                        className="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors disabled:opacity-50"
+                        className="text-[10px] px-2 py-1 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 rounded border border-amber-500/30 transition-colors disabled:opacity-50 relative z-20"
                       >
                         Lifetime Access
                       </button>
                       <button
                         onClick={() => handleBillingOverride('REVOKE_ACCESS')}
                         disabled={updatingId === org.id}
-                        className="text-[10px] px-2 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded border border-rose-500/30 transition-colors disabled:opacity-50"
+                        className="text-[10px] px-2 py-1 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded border border-rose-500/30 transition-colors disabled:opacity-50 relative z-20"
                       >
                         Revoke Billing
                       </button>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800">
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-800 relative z-10">
                     <span className="text-slate-500 text-[10px]">{org.contactEmail}</span>
                     <button
                       onClick={() => handleStatusChange(org.id, 'SUSPENDED')}
                       disabled={updatingId === org.id}
-                      className="text-[10px] px-2 py-1 bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded font-medium border border-rose-800/50"
+                      className="text-[10px] px-2 py-1 bg-rose-900/40 text-rose-400 hover:text-rose-300 rounded font-medium border border-rose-800/50 relative z-20"
                     >
                       Suspend Fleet
                     </button>
