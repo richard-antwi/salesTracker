@@ -80,6 +80,6 @@ export async function POST() {
     return NextResponse.json({ success: true, phone: demoUser.phone, password: 'DEMO' });
   } catch (error: any) {
     console.error('Demo Init Error:', error);
-    return NextResponse.json({ error: 'Failed to initialize demo sandbox' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to initialize demo sandbox', details: error.message || String(error) }, { status: 500 });
   }
 }

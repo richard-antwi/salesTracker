@@ -67,8 +67,8 @@ export async function POST(request: Request) {
       user: sessionPayload,
       message: 'Logged in successfully',
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Server error during login' }, { status: 500 });
+    return NextResponse.json({ error: 'Server error during login', details: error.message || String(error) }, { status: 500 });
   }
 }
