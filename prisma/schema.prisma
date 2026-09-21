@@ -28,6 +28,14 @@ model Organization {
   status       OrgStatus  @default(PENDING)
   contactEmail String
   contactPhone String?
+  
+  // Subscription Fields
+  subscriptionStatus       SubStatus  @default(TRIAL)
+  trialEndsAt              DateTime?
+  currentPeriodEnd         DateTime?
+  paystackCustomerCode     String?
+  paystackSubscriptionCode String?
+
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 
@@ -171,4 +179,17 @@ enum DocumentType {
   PASSPORT_PHOTO
   SIGNED_CONTRACT
   OTHER
+}
+
+enum SubStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+model SystemSettings {
+  id                     String   @id @default("global")
+  monthlySubscriptionFee Decimal  @default(50) @db.Decimal(10, 2)
+  updatedAt              DateTime @updatedAt
 }

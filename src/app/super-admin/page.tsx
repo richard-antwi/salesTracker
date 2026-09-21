@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShieldAlert, Building2, CheckCircle2, XCircle, AlertTriangle, Users, Bike, FileText, ArrowLeft, RefreshCw, LogOut } from 'lucide-react';
+import { ShieldAlert, Building2, CheckCircle2, XCircle, AlertTriangle, Users, Bike, FileText, ArrowLeft, RefreshCw, LogOut, Settings } from 'lucide-react';
 
 interface OrganizationRecord {
   id: string;
@@ -105,6 +105,12 @@ export default function SuperAdminDashboardPage() {
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
           </button>
+          <Link
+            href="/super-admin/settings"
+            className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
+          >
+            <Settings className="w-3.5 h-3.5" /> Settings
+          </Link>
           <button
             onClick={handleLogout}
             className="px-3.5 py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
