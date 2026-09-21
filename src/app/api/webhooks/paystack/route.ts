@@ -32,11 +32,35 @@ export async function POST(request: Request) {
     }
 
     const { reference, amount, metadata } = event.data; 
-    // Reference format: PAY_{agreementId}_{timestamp}
-    // Amount is in pesewas, so we divide by 100
     const paymentAmount = Number(amount) / 100;
     
-    // Extract agreementId from reference
+    // --- 1. SAAS SUBSCRIPTION PAYMENT ---
+    if (metadata?.type === 'SAAS_SUBSCRIPTION' && metadata?.organizationId) {
+      console.log(`✅ [Webhook] SaaS Subscription Payment for Org: ${metadata.organizationId}`);
+      
+      const org = await prisma.organization.findUnique({ where: { id: metadata.organizationId } });
+      if (!org) return NextResponse.json({ error: 'Org not found' }, { status: 404 });
+
+      // Extend subscription by 30 days
+      const currentEnd = org.currentPeriodEnd && org.currentPeriodEnd > new Date() 
+        ? org.currentPeriodEnd 
+        : new Date();
+      
+      const newPeriodEnd = new Date(currentEnd);
+      newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+
+      await prisma.organization.update({
+        where: { id: org.id },
+        data: {
+          subscriptionStatus: 'ACTIVE',
+          currentPeriodEnd: newPeriodEnd,
+        }
+      });
+
+      return NextResponse.json({ received: true });
+    }
+
+    // --- 2. RIDER INSTALLMENT PAYMENT ---
     const parts = reference.split('_');
     if (parts.length < 2 || parts[0] !== 'PAY') {
        console.error(`Invalid reference format: ${reference}`);

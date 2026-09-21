@@ -108,6 +108,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Organization ID is required' }, { status: 400 });
     }
 
+    const org = await prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { subscriptionStatus: true, trialEndsAt: true, currentPeriodEnd: true }
+    });
+
+    if (!org) {
+      return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
+    }
+
+    const isPastDue = org.subscriptionStatus === 'PAST_DUE' || 
+      (org.currentPeriodEnd && new Date(org.currentPeriodEnd) < new Date());
+    const isTrialExpired = org.subscriptionStatus === 'TRIAL' && org.trialEndsAt && new Date(org.trialEndsAt) < new Date();
+
+    if (isPastDue || isTrialExpired) {
+      return NextResponse.json({ 
+        error: 'Your platform subscription has expired. Please renew your access to create new agreements.' 
+      }, { status: 403 });
+    }
+
     // Validate required fields
     if (
       !ownerName ||

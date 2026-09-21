@@ -32,9 +32,18 @@ export async function PATCH(
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
+    const updateData: any = { status };
+
+    // Initialize 14-day trial upon first approval
+    if (status === 'APPROVED' && !organization.trialEndsAt && organization.subscriptionStatus === 'TRIAL') {
+      const trialEnds = new Date();
+      trialEnds.setDate(trialEnds.getDate() + 14);
+      updateData.trialEndsAt = trialEnds;
+    }
+
     const updatedOrg = await prisma.organization.update({
       where: { id },
-      data: { status: status as any },
+      data: updateData,
     });
 
     if (status === 'APPROVED') {

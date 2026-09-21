@@ -120,15 +120,15 @@ export default function Navbar({ user }: NavbarProps) {
                       <span className="hidden sm:inline">Analytics</span>
                     </Link>
                     <Link
-                      href="/admin/settings"
+                      href="/admin/settings/billing"
                       className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
-                        pathname === '/admin/settings'
+                        pathname === '/admin/settings/billing'
                           ? 'bg-slate-800 text-emerald-400 border border-slate-700'
                           : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                       }`}
                     >
-                      <Shield className="w-4 h-4" />
-                      <span className="hidden sm:inline">Security</span>
+                      <CreditCard className="w-4 h-4" />
+                      <span className="hidden sm:inline">Billing</span>
                     </Link>
                     <Link
                       href="/admin/payments/new"

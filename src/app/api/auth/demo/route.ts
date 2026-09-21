@@ -21,6 +21,8 @@ export async function POST() {
           status: 'APPROVED',
           contactEmail: demoEmail,
           contactPhone: demoPhone,
+          subscriptionStatus: 'TRIAL',
+          trialEndsAt: new Date(new Date().setDate(new Date().getDate() + 14)),
         }
       });
       
