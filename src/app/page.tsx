@@ -7,17 +7,6 @@ import DemoButton from '@/components/DemoButton';
 export default async function HomePage() {
   const session = await getCurrentSession();
 
-  // Redirect authenticated users to their respective dashboards
-  if (session) {
-    if (session.role === 'ADMIN' || session.role === 'SUPER_ADMIN') {
-      redirect('/admin/dashboard');
-    } else if (session.role === 'GUARANTOR') {
-      redirect('/guarantor/dashboard');
-    } else {
-      redirect('/rider');
-    }
-  }
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-emerald-200">
       

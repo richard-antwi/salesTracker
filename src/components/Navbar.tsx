@@ -34,15 +34,7 @@ export default function Navbar({ user }: NavbarProps) {
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Name */}
           <Link
-            href={
-              !user 
-                ? '/'
-                : user.role === 'SUPER_ADMIN' || user.role === 'ADMIN'
-                ? '/admin/dashboard'
-                : user.role === 'GUARANTOR'
-                ? '/guarantor/dashboard'
-                : '/rider'
-            }
+            href="/"
             className="flex items-center gap-2.5 group"
           >
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md group-hover:bg-emerald-500 transition-colors">
