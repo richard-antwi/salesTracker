@@ -89,7 +89,7 @@ export default function Navbar({ user }: NavbarProps) {
           </Link>
 
           {/* Navigation Links for Desktop & Mobile Header Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto whitespace-nowrap no-scrollbar pb-1 sm:pb-0">
             {!user ? (
               // PUBLIC NAVBAR
               <>
@@ -152,7 +152,7 @@ export default function Navbar({ user }: NavbarProps) {
                     </Link>
                     <Link
                       href="/admin/analytics"
-                      className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
+                      className={`flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
                         pathname === '/admin/analytics'
                           ? 'bg-slate-800 text-emerald-400 border border-slate-700'
                           : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -163,7 +163,7 @@ export default function Navbar({ user }: NavbarProps) {
                     </Link>
                     <Link
                       href="/admin/settings/billing"
-                      className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
+                      className={`flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
                         pathname === '/admin/settings/billing'
                           ? 'bg-slate-800 text-emerald-400 border border-slate-700'
                           : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
@@ -181,18 +181,18 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span>Record Payment</span>
+                      <span className="hidden sm:inline">Record Payment</span>
                     </Link>
                     <Link
                       href="/admin/agreements/new"
-                      className={`hidden md:flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
+                      className={`flex px-3 py-2 rounded-lg text-xs sm:text-sm font-medium items-center gap-1.5 transition-colors ${
                         pathname === '/admin/agreements/new'
                           ? 'bg-slate-800 text-emerald-400 border border-slate-700'
                           : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
                       }`}
                     >
                       <PlusCircle className="w-4 h-4" />
-                      <span>New Agreement</span>
+                      <span className="hidden sm:inline">New Agreement</span>
                     </Link>
                   </>
                 ) : user.role === 'GUARANTOR' ? (

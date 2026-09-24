@@ -56,6 +56,7 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'OVERDUE' | 'DEFAULTED' | 'REPOSSESSED' | 'COMPLETED'>('ALL');
   const [sortBy, setSortBy] = useState<'balance-desc' | 'balance-asc' | 'progress-desc' | 'progress-asc' | 'date-asc'>('balance-desc');
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     async function fetchAgreements() {
@@ -64,6 +65,7 @@ export default function AdminDashboardPage() {
         const data = await res.json();
         if (res.ok && data.agreements) {
           setAgreements(data.agreements);
+          setIsDemo(data.isDemo || false);
         }
       } catch (err) {
         console.error('Failed to load agreements:', err);
@@ -167,7 +169,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-6 pb-12">
-      <TourGuide agreementsCount={totalAgreements} />
+      <TourGuide agreementsCount={totalAgreements} isDemo={isDemo} />
       
       {/* Top Header & Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

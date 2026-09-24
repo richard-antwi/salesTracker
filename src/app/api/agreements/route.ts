@@ -54,7 +54,9 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ agreements: agreementsWithSummary });
+    const isDemo = session.phone === '0550000000';
+
+    return NextResponse.json({ agreements: agreementsWithSummary, isDemo });
   } catch (error) {
     console.error('Error fetching agreements:', error);
     return NextResponse.json({ error: 'Failed to fetch agreements' }, { status: 500 });

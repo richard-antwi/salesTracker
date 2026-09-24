@@ -6,16 +6,19 @@ import 'driver.js/dist/driver.css';
 
 interface TourGuideProps {
   agreementsCount: number;
+  isDemo?: boolean;
 }
 
-export default function TourGuide({ agreementsCount }: TourGuideProps) {
+export default function TourGuide({ agreementsCount, isDemo = false }: TourGuideProps) {
   const hasRun = useRef(false);
 
   useEffect(() => {
-    if (agreementsCount === 0 && !hasRun.current) {
+    // Show tour if it's a demo account OR if there are 0 agreements (new user)
+    if ((isDemo || agreementsCount === 0) && !hasRun.current) {
       const hasSeenTour = localStorage.getItem('has_seen_tour');
       
-      if (!hasSeenTour) {
+      // If it's a demo account, we ignore localStorage so it always shows
+      if (isDemo || !hasSeenTour) {
         hasRun.current = true;
         
         // Small delay to allow the page to render completely
