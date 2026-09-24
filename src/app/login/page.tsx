@@ -23,6 +23,10 @@ export default function LoginPage() {
   const [changePwdError, setChangePwdError] = useState('');
   const [changePwdSuccess, setChangePwdSuccess] = useState(false);
 
+  // Forgot Password state
+  const [forgotPasswordMode, setForgotPasswordMode] = useState(false);
+  const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState(false);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -103,6 +107,28 @@ export default function LoginPage() {
       }, 1200);
     } catch (err: unknown) {
       setChangePwdError(err instanceof Error ? err.message : 'Error changing password');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to send reset link');
+      }
+      setForgotPasswordSuccess(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error processing request');
     } finally {
       setLoading(false);
     }
@@ -240,6 +266,81 @@ export default function LoginPage() {
             )}
           </div>
         ) : (
+          /* Forgot Password Form */
+          forgotPasswordMode ? (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3 text-emerald-400 mb-4">
+              <Lock className="w-6 h-6 shrink-0" />
+              <div>
+                <h2 className="text-lg font-bold text-white">Reset Password</h2>
+                <p className="text-xs text-slate-400">Enter your email or phone number</p>
+              </div>
+            </div>
+
+            {forgotPasswordSuccess ? (
+              <div className="bg-emerald-950/60 border border-emerald-800/80 rounded-xl p-4 text-emerald-300 text-center flex flex-col items-center gap-2">
+                <CheckCircle2 className="w-8 h-8 text-emerald-400" />
+                <span className="font-semibold text-sm">Reset link sent!</span>
+                <span className="text-xs text-emerald-400/80">Check your email for the password reset link.</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotPasswordMode(false);
+                    setForgotPasswordSuccess(false);
+                  }}
+                  className="mt-4 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg transition-colors"
+                >
+                  Return to Login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                {error && (
+                  <div className="bg-rose-950/60 border border-rose-800/80 text-rose-300 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                    <span>{error}</span>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1.5">Phone Number or Email</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      value={identifier}
+                      onChange={(e) => setIdentifier(e.target.value)}
+                      placeholder="e.g. 0241112233 or admin@workandpay.gh"
+                      required
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-slate-800/80 border border-slate-700 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50 mt-2"
+                >
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={() => {
+                    setForgotPasswordMode(false);
+                    setError('');
+                  }}
+                  className="w-full text-xs font-semibold text-slate-400 hover:text-white transition-colors py-2"
+                >
+                  &larr; Back to Login
+                </button>
+              </form>
+            )}
+          </div>
+        ) : (
           /* Standard Login Form */
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
             <form onSubmit={handleLogin} className="space-y-4">
@@ -284,6 +385,18 @@ export default function LoginPage() {
                     title={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForgotPasswordMode(true);
+                      setError('');
+                    }}
+                    className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+                  >
+                    Forgot Password?
                   </button>
                 </div>
               </div>

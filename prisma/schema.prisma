@@ -58,6 +58,8 @@ model User {
   passwordHash       String
   role               Role          @default(RIDER)
   mustChangePassword Boolean       @default(false)
+  resetToken         String?
+  resetTokenExpiry   DateTime?
 
   createdAt          DateTime      @default(now())
   agreementsAsHirer  Agreement[]   @relation("HirerAgreements")
