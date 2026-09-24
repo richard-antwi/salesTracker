@@ -301,7 +301,7 @@ export default function LoginPage() {
                 type="button"
                 disabled={loading}
                 onClick={() => {
-                  setIdentifier('0000000000');
+                  setIdentifier('0550000000');
                   setPassword('DEMO');
                   setTimeout(() => {
                     document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));

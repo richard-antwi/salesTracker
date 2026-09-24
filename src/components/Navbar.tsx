@@ -29,7 +29,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
   const isDemoUser = 
-    (user?.phone === '0000000000' || user?.phone === '0550000001' || user?.phone === '0240000002') && 
+    (user?.phone === '0550000000' || user?.phone === '0550000001' || user?.phone === '0240000002') && 
     pathname !== '/login' && 
     pathname !== '/request-access' && 
     pathname !== '/';
@@ -42,7 +42,7 @@ export default function Navbar({ user }: NavbarProps) {
         body: JSON.stringify({ identifier: phone, password: 'DEMO' }),
       });
       if (res.ok) {
-        if (phone === '0000000000') router.push('/admin/dashboard');
+        if (phone === '0550000000') router.push('/admin/dashboard');
         else if (phone === '0550000001') router.push('/rider');
         else if (phone === '0240000002') router.push('/guarantor/dashboard');
         router.refresh();
@@ -59,7 +59,7 @@ export default function Navbar({ user }: NavbarProps) {
           <span>⚠️ SANDBOX DEMO: You are viewing a test environment. Data here is temporary.</span>
           <div className="flex flex-wrap items-center justify-center gap-2 mt-1 sm:mt-0">
             <span className="opacity-75 hidden sm:inline">Switch Role:</span>
-            <button onClick={() => switchDemoRole('0000000000')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0000000000' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Admin</button>
+            <button onClick={() => switchDemoRole('0550000000')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0550000000' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Admin</button>
             <button onClick={() => switchDemoRole('0550000001')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0550000001' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Rider</button>
             <button onClick={() => switchDemoRole('0240000002')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0240000002' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Guarantor</button>
             <div className="h-4 w-px bg-amber-600/50 hidden sm:block mx-1"></div>

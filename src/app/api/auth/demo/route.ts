@@ -4,7 +4,7 @@ import { hashPassword } from '@/lib/auth';
 
 export async function POST() {
   try {
-    const demoPhone = '0000000000';
+    const demoPhone = '0550000000';
     const demoEmail = 'demo@workandpay.gh';
     
     // Check if demo user exists
