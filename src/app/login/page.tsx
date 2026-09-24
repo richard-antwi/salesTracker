@@ -265,9 +265,8 @@ export default function LoginPage() {
               </form>
             )}
           </div>
-        ) : (
+        ) : forgotPasswordMode ? (
           /* Forgot Password Form */
-          forgotPasswordMode ? (
           <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
             <div className="flex items-center gap-3 text-emerald-400 mb-4">
               <Lock className="w-6 h-6 shrink-0" />
