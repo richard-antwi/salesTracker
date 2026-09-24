@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
+import { CONFIG } from '@/lib/config';
 
 export async function POST(request: Request) {
   try {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetLink = `${CONFIG.APP_URL}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
       from: `"Work & Pay Ghana" <${process.env.GMAIL_USER}>`,
