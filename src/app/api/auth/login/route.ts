@@ -51,6 +51,53 @@ export async function POST(request: Request) {
       }
     }
 
+    // 2FA Verification for ADMIN and SUPER_ADMIN (Skip for DEMO user)
+    const isDemoAdmin = user.phone === '0550000000';
+    if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && !isDemoAdmin) {
+      const { token } = body;
+
+      if (!token) {
+        // Generate new 2FA token
+        const generatedToken = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            twoFactorCode: generatedToken,
+            twoFactorExpiresAt: expiresAt,
+          }
+        });
+
+        // Send email
+        const { notifications } = await import('@/lib/notifications');
+        if (user.email) {
+          await notifications.send2FAToken(user.email, user.name, generatedToken);
+        }
+
+        return NextResponse.json({ requires2FA: true }, { status: 403 });
+      } else {
+        // Verify provided token
+        if (
+          !user.twoFactorCode ||
+          user.twoFactorCode !== token ||
+          !user.twoFactorExpiresAt ||
+          user.twoFactorExpiresAt < new Date()
+        ) {
+          return NextResponse.json({ error: 'Invalid or expired 2FA code' }, { status: 401 });
+        }
+
+        // Clear the token after successful verification
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            twoFactorCode: null,
+            twoFactorExpiresAt: null,
+          }
+        });
+      }
+    }
+
 
     const sessionPayload: UserSession = {
       userId: user.id,

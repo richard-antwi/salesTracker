@@ -60,6 +60,8 @@ model User {
   mustChangePassword Boolean       @default(false)
   resetToken         String?
   resetTokenExpiry   DateTime?
+  twoFactorCode      String?
+  twoFactorExpiresAt DateTime?
 
   createdAt          DateTime      @default(now())
   agreementsAsHirer  Agreement[]   @relation("HirerAgreements")

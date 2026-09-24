@@ -479,6 +479,29 @@ export class NotificationService {
       text: message,
     });
   }
+  // Trigger 9: 2FA Token
+  async send2FAToken(toEmail: string, adminName: string, token: string) {
+    const textMsg = `Hello ${adminName}, your Work & Pay Admin Login Verification Code is: ${token}. This code expires in 10 minutes.`;
+    const htmlMsg = `
+      <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+        <h2 style="color: #059669; margin-top: 0;">Admin Login Verification</h2>
+        <p>Hello <strong>${adminName}</strong>,</p>
+        <p>Please use the following 6-digit code to complete your login securely:</p>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 24px; margin: 16px 0; text-align: center;">
+          <span style="font-size: 32px; letter-spacing: 0.2em; font-family: monospace; font-weight: bold; color: #0f172a;">${token}</span>
+        </div>
+        <p style="color: #b91c1c; font-size: 12px;">This code will expire in 10 minutes. If you did not attempt to log in, please secure your account immediately.</p>
+        <p style="color: #64748b; font-size: 12px; margin-top: 24px;">Work & Pay Security Team</p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to: toEmail,
+      subject: `Your Login Verification Code: ${token} - Work & Pay`,
+      html: htmlMsg,
+      text: textMsg,
+    });
+  }
 }
 
 export const notifications = new NotificationService();
