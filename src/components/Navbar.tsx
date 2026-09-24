@@ -239,6 +239,7 @@ export default function Navbar({ user }: NavbarProps) {
               </>
             )}
           </div>
+          </div>
         </div>
       </header>
     </>
