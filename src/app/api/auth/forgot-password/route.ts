@@ -47,7 +47,8 @@ export async function POST(request: Request) {
       },
     });
 
-    const resetLink = `${CONFIG.APP_URL}/reset-password?token=${resetToken}`;
+    const origin = request.headers.get('origin') || CONFIG.APP_URL;
+    const resetLink = `${origin}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
       from: `"Work & Pay Ghana" <${process.env.GMAIL_USER}>`,
