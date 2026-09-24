@@ -1,66 +1,90 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { useEffect, useRef } from 'react';
+import { driver } from 'driver.js';
+import 'driver.js/dist/driver.css';
 
 interface TourGuideProps {
   agreementsCount: number;
 }
 
 export default function TourGuide({ agreementsCount }: TourGuideProps) {
-  const [showTour, setShowTour] = useState(false);
+  const hasRun = useRef(false);
 
   useEffect(() => {
-    // Only show tour if they have 0 agreements AND haven't seen it yet
-    if (agreementsCount === 0) {
+    if (agreementsCount === 0 && !hasRun.current) {
       const hasSeenTour = localStorage.getItem('has_seen_tour');
+      
       if (!hasSeenTour) {
-        // Small delay to allow page to render first
-        const timer = setTimeout(() => setShowTour(true), 500);
-        return () => clearTimeout(timer);
+        hasRun.current = true;
+        
+        // Small delay to allow the page to render completely
+        setTimeout(() => {
+          const driverObj = driver({
+            showProgress: true,
+            animate: true,
+            popoverClass: 'driverjs-theme', // We can add custom CSS if needed
+            steps: [
+              {
+                element: 'body',
+                popover: {
+                  title: 'Welcome to Work & Pay! 🎉',
+                  description: 'This quick tour will show you around your new Fleet Dashboard. We will cover the most important features after signup.',
+                  side: 'center',
+                  align: 'center',
+                }
+              },
+              {
+                element: '#tour-new-agreement',
+                popover: {
+                  title: 'Add a Motorcycle',
+                  description: 'Start here! Click this button to register your first motorcycle, set up financial terms, and link a rider.',
+                  side: 'bottom',
+                  align: 'start',
+                }
+              },
+              {
+                element: '#tour-record-payment',
+                popover: {
+                  title: 'Record Payments',
+                  description: 'Once you have active agreements, use this button to quickly log cash, bank, or mobile money payments.',
+                  side: 'bottom',
+                  align: 'start',
+                }
+              },
+              {
+                element: '#tour-metrics',
+                popover: {
+                  title: 'Portfolio Health Overview',
+                  description: 'These metrics show your total collected revenue, outstanding balances, and highlight any riders who are falling behind.',
+                  side: 'bottom',
+                  align: 'center',
+                }
+              },
+              {
+                element: '#tour-agreements-list',
+                popover: {
+                  title: 'Track Every Detail',
+                  description: 'Your active agreements will appear here. You can click into any agreement to view statements, track live progress, and manage documents.',
+                  side: 'top',
+                  align: 'center',
+                }
+              }
+            ],
+            onDestroyStarted: () => {
+              if (driverObj.hasNextStep() || confirm("Are you sure you want to skip the rest of the tour?")) {
+                localStorage.setItem('has_seen_tour', 'true');
+                driverObj.destroy();
+              }
+            },
+          });
+
+          driverObj.drive();
+        }, 1000);
       }
     }
   }, [agreementsCount]);
 
-  if (!showTour) return null;
-
-  const dismissTour = () => {
-    localStorage.setItem('has_seen_tour', 'true');
-    setShowTour(false);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full relative overflow-hidden animate-in zoom-in-95 duration-500">
-        
-        {/* Glow effect header */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
-        
-        <button 
-          onClick={dismissTour}
-          className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="p-6">
-          <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center mb-5 shadow-inner">
-            <Sparkles className="w-6 h-6" />
-          </div>
-          
-          <h3 className="text-xl font-bold text-slate-900 mb-2">Welcome to your new Fleet!</h3>
-          <p className="text-sm text-slate-600 leading-relaxed mb-6">
-            Your dashboard is currently empty. To get started, click the <strong className="text-slate-900">Add First Motorcycle</strong> button or <strong className="text-slate-900">+ New Agreement</strong> at the top to register your first rider.
-          </p>
-          
-          <button
-            onClick={dismissTour}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl shadow-md transition-all active:scale-95"
-          >
-            Got it, let's go!
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  // We don't render anything, driver.js handles the overlay
+  return null;
 }

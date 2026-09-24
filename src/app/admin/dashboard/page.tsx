@@ -195,6 +195,7 @@ export default function AdminDashboardPage() {
           </Link>
 
           <Link
+            id="tour-new-agreement"
             href="/admin/agreements/new"
             className="px-3.5 py-2 rounded-xl bg-slate-900 text-white font-semibold text-xs hover:bg-slate-800 transition-colors shadow-sm inline-flex items-center gap-1.5"
           >
@@ -203,6 +204,7 @@ export default function AdminDashboardPage() {
           </Link>
 
           <Link
+            id="tour-record-payment"
             href="/admin/payments/new"
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition-all shadow-md inline-flex items-center gap-1.5"
           >
@@ -213,7 +215,7 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Portfolio Summary Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div id="tour-metrics" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
           <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
             Total Agreements
@@ -351,7 +353,7 @@ export default function AdminDashboardPage() {
         ) : (
           <>
             {/* Desktop Table View (Hidden on mobile <640px) */}
-            <div className="hidden sm:block overflow-x-auto">
+            <div id="tour-agreements-list" className="hidden sm:block overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-600">
                 <thead className="bg-slate-50 text-slate-700 font-bold border-y border-slate-200 uppercase tracking-wider text-[11px]">
                   <tr>
