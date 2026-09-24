@@ -61,12 +61,25 @@ export async function POST() {
         }
       });
 
+      const guarantor = await prisma.user.create({
+        data: {
+          organizationId: org.id,
+          name: 'Demo Guarantor',
+          phone: '0240000002',
+          email: 'guarantor@demo.com',
+          passwordHash,
+          role: 'GUARANTOR',
+        }
+      });
+
       await prisma.agreement.create({
         data: {
           organizationId: org.id,
           ownerName: 'Demo Admin',
           ownerPhone: demoPhone,
           hirerId: rider.id,
+          guarantor1Name: 'Demo Guarantor',
+          guarantor1Phone: '0240000002',
           vehicleId: vehicle.id,
           cashPrice: 15000,
           hirePurchasePrice: 20000,

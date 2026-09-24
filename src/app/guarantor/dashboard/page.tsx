@@ -13,7 +13,9 @@ import {
   Phone,
   Shield,
   CreditCard,
+  Lock,
 } from 'lucide-react';
+import PasswordChangeForm from '@/components/PasswordChangeForm';
 
 interface GuarantorAgreement {
   id: string;
@@ -323,6 +325,20 @@ export default function GuarantorDashboard() {
           })}
         </div>
       )}
+
+      {/* Account Security / Password Change */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4 mt-6">
+        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-900">Account Security</h3>
+            <p className="text-xs text-slate-500">Update your guarantor portal password</p>
+          </div>
+        </div>
+        <PasswordChangeForm />
+      </div>
     </div>
   );
 }

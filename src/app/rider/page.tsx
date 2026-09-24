@@ -19,8 +19,10 @@ import {
   Archive,
   X,
   CreditCard,
+  Lock,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
+import PasswordChangeForm from '@/components/PasswordChangeForm';
 
 interface PaymentRecord {
   id: string;
@@ -476,6 +478,20 @@ export default function RiderMyAgreementPage() {
             {agreement.ownerPhone}
           </a>
         </div>
+      </div>
+
+      {/* Account Security / Password Change */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center gap-3 border-b border-slate-100 pb-3">
+          <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+            <Lock className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">Account Security</h3>
+            <p className="text-[10px] text-slate-500">Update your rider portal password</p>
+          </div>
+        </div>
+        <PasswordChangeForm />
       </div>
 
       {/* Paystack Modal */}

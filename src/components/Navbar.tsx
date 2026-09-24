@@ -8,6 +8,7 @@ interface NavbarProps {
   user?: {
     name: string;
     role: 'SUPER_ADMIN' | 'ADMIN' | 'RIDER' | 'GUARANTOR';
+    phone?: string;
   } | null;
 }
 
@@ -27,16 +28,49 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
+  const isDemoUser = user?.phone === '0000000000' || user?.phone === '0550000001' || user?.phone === '0240000002';
+
+  async function switchDemoRole(phone: string) {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: phone, password: 'DEMO' }),
+      });
+      if (res.ok) {
+        if (phone === '0000000000') router.push('/admin/dashboard');
+        else if (phone === '0550000001') router.push('/rider');
+        else if (phone === '0240000002') router.push('/guarantor/dashboard');
+        router.refresh();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
 
   return (
-    <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Brand Logo & Name */}
-          <Link
-            href="/"
-            className="flex items-center gap-2.5 group"
-          >
+    <>
+      {isDemoUser && (
+        <div className="bg-amber-400 text-amber-950 px-4 py-2 text-[11px] sm:text-xs font-bold flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center sticky top-0 z-50">
+          <span>⚠️ SANDBOX DEMO: You are viewing a test environment. Data here is temporary.</span>
+          <div className="flex flex-wrap items-center justify-center gap-2 mt-1 sm:mt-0">
+            <span className="opacity-75 hidden sm:inline">Switch Role:</span>
+            <button onClick={() => switchDemoRole('0000000000')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0000000000' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Admin</button>
+            <button onClick={() => switchDemoRole('0550000001')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0550000001' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Rider</button>
+            <button onClick={() => switchDemoRole('0240000002')} className={`px-2 py-1 rounded shadow-sm transition-all ${user.phone === '0240000002' ? 'bg-amber-950 text-amber-400' : 'bg-amber-500 hover:bg-amber-600'}`}>Guarantor</button>
+            <div className="h-4 w-px bg-amber-600/50 hidden sm:block mx-1"></div>
+            <Link href="/request-access" className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded shadow-sm transition-all">Create Real Account &rarr;</Link>
+          </div>
+        </div>
+      )}
+      <header className="bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Brand Logo & Name */}
+            <Link
+              href="/"
+              className="flex items-center gap-2.5 group"
+            >
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md group-hover:bg-emerald-500 transition-colors">
               <Bike className="w-6 h-6" />
             </div>
@@ -206,7 +240,7 @@ export default function Navbar({ user }: NavbarProps) {
             )}
           </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
