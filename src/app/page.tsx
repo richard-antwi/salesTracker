@@ -22,7 +22,7 @@ export default async function HomePage() {
             Manage your <span className="text-emerald-400">Motorcycle Fleet</span> <br className="hidden md:block"/> with absolute confidence.
           </h1>
           <p className="text-lg md:text-xl text-slate-400 mb-10 max-w-2xl mx-auto">
-            Eliminate paper ledgers, automate late fees, and let your riders pay via Mobile Money. The complete operating system for Work-and-Pay owners in Ghana.
+            Eliminate paper ledgers, automate late fees, and let riders pay via Mobile Money. Protect your investment with our dedicated Guarantor Portal. The complete multi-tenant operating system for Work-and-Pay owners in Ghana.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link 
@@ -50,7 +50,7 @@ export default async function HomePage() {
                 We built this platform to bring trust back to the ecosystem. By automating calculations and providing dedicated portals for everyone involved, we protect the owner's investment while empowering the rider to achieve ownership.
               </p>
               <ul className="space-y-3">
-                {['Bank-level encryption for sensitive data', 'Legally binding digital contracts', 'Real-time financial reconciliation'].map((item, i) => (
+                {['Multi-tenant architecture (Manage isolated fleets)', 'Dedicated Guarantor Portal for accountability', 'Automated Late Fee tracking & enforcement'].map((item, i) => (
                   <li key={i} className="flex items-center gap-3 text-slate-700 font-medium">
                     <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                     {item}
@@ -117,9 +117,9 @@ export default async function HomePage() {
               <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center mb-6">
                 <Lock className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold mb-3">Enterprise Security</h3>
+              <h3 className="text-xl font-bold mb-3">Enterprise Multi-Tenant</h3>
               <p className="text-slate-600 leading-relaxed">
-                Protect your account with Two-Factor Authentication (2FA). All sensitive Guarantor ID cards and phone numbers are encrypted at rest.
+                Whether you own 2 bikes or 2,000, our multi-tenant architecture isolates your fleet's data. Plus, integrated Password Reset flows and 2FA protect your account.
               </p>
             </div>
           </div>
