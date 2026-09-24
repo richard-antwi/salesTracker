@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bike, LogOut, PlusCircle, CreditCard, LayoutDashboard, Shield, TrendingUp } from 'lucide-react';
+import { Bike, LogOut, PlusCircle, CreditCard, LayoutDashboard, Shield, TrendingUp, LogIn } from 'lucide-react';
 
 interface NavbarProps {
   user?: {
@@ -78,11 +78,11 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white shadow-md group-hover:bg-emerald-500 transition-colors">
               <Bike className="w-6 h-6" />
             </div>
-            <div className="hidden sm:block">
+            <div className="flex flex-col">
               <span className="font-bold text-lg text-white tracking-tight flex items-center gap-1.5">
                 Work & Pay
               </span>
-              <span className="block text-[10px] text-emerald-400 font-medium tracking-wider uppercase">
+              <span className="hidden sm:block text-[10px] text-emerald-400 font-medium tracking-wider uppercase">
                 Ghana Hire-Purchase
               </span>
             </div>
@@ -104,9 +104,10 @@ export default function Navbar({ user }: NavbarProps) {
                 </a>
                 <Link
                   href="/login"
-                  className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-md transition-all"
+                  className="ml-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold rounded-xl shadow-md transition-all flex items-center gap-1.5"
                 >
-                  Log In
+                  <LogIn className="w-4 h-4" />
+                  <span>Log In</span>
                 </Link>
               </>
             ) : (
@@ -148,7 +149,7 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <LayoutDashboard className="w-4 h-4" />
-                      <span className="hidden sm:inline">Dashboard</span>
+                      <span>Dashboard</span>
                     </Link>
                     <Link
                       href="/admin/analytics"
@@ -159,7 +160,7 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <TrendingUp className="w-4 h-4" />
-                      <span className="hidden sm:inline">Analytics</span>
+                      <span>Analytics</span>
                     </Link>
                     <Link
                       href="/admin/settings/billing"
@@ -170,7 +171,7 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span className="hidden sm:inline">Billing</span>
+                      <span>Billing</span>
                     </Link>
                     <Link
                       href="/admin/payments/new"
@@ -181,7 +182,7 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <CreditCard className="w-4 h-4" />
-                      <span className="hidden sm:inline">Record Payment</span>
+                      <span>Record Payment</span>
                     </Link>
                     <Link
                       href="/admin/agreements/new"
@@ -192,7 +193,7 @@ export default function Navbar({ user }: NavbarProps) {
                       }`}
                     >
                       <PlusCircle className="w-4 h-4" />
-                      <span className="hidden sm:inline">New Agreement</span>
+                      <span>New Agreement</span>
                     </Link>
                   </>
                 ) : user.role === 'GUARANTOR' ? (
@@ -222,8 +223,8 @@ export default function Navbar({ user }: NavbarProps) {
                 )}
 
                 {/* User Badge & Logout */}
-                <div className="flex items-center gap-2 border-l border-slate-800 pl-3 ml-1 sm:ml-2">
-                  <div className="hidden sm:block text-right">
+                <div className="flex items-center gap-3 border-l border-slate-800 pl-3 ml-1 sm:ml-2">
+                  <div className="text-right">
                     <span className="block text-xs font-semibold text-white truncate max-w-[120px]">
                       {user.name}
                     </span>
@@ -235,9 +236,10 @@ export default function Navbar({ user }: NavbarProps) {
                   <button
                     onClick={handleLogout}
                     title="Log out"
-                    className="p-2 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
+                    <span>Log Out</span>
                   </button>
                 </div>
               </>
