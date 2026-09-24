@@ -13,9 +13,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Sandbox demo accounts cannot change passwords.' }, { status: 403 });
     }
 
-    const { newPassword } = await request.json();
+    const { currentPassword, newPassword } = await request.json();
+    
     if (!newPassword || newPassword.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters long' }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: session.userId } });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // If it's not a forced first-time reset, require current password
+    if (!user.mustChangePassword) {
+      if (!currentPassword) {
+        return NextResponse.json({ error: 'Current password is required' }, { status: 400 });
+      }
+      const { comparePassword } = await import('@/lib/auth');
+      const isMatch = await comparePassword(currentPassword, user.passwordHash);
+      if (!isMatch) {
+        return NextResponse.json({ error: 'Incorrect current password' }, { status: 401 });
+      }
     }
 
     const passwordHash = await hashPassword(newPassword);
