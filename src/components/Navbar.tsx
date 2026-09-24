@@ -28,7 +28,11 @@ export default function Navbar({ user }: NavbarProps) {
   }
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN';
-  const isDemoUser = user?.phone === '0000000000' || user?.phone === '0550000001' || user?.phone === '0240000002';
+  const isDemoUser = 
+    (user?.phone === '0000000000' || user?.phone === '0550000001' || user?.phone === '0240000002') && 
+    pathname !== '/login' && 
+    pathname !== '/request-access' && 
+    pathname !== '/';
 
   async function switchDemoRole(phone: string) {
     try {

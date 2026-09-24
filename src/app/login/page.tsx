@@ -296,6 +296,21 @@ export default function LoginPage() {
                 {loading ? 'Logging in...' : 'Sign In'}
                 <ArrowRight className="w-4 h-4" />
               </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={() => {
+                  setIdentifier('0000000000');
+                  setPassword('DEMO');
+                  setTimeout(() => {
+                    document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                  }, 100);
+                }}
+                className="w-full bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/30 text-amber-300 font-semibold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs disabled:opacity-50 mt-2"
+              >
+                Try the Sandbox Demo
+              </button>
             </form>
 
             {/* Public Request Access Link */}
