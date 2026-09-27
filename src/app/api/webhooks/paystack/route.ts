@@ -41,13 +41,16 @@ export async function POST(request: Request) {
       const org = await prisma.organization.findUnique({ where: { id: metadata.organizationId } });
       if (!org) return NextResponse.json({ error: 'Org not found' }, { status: 404 });
 
-      // Extend subscription by 30 days
+      const durationInMonths = metadata.durationInMonths || 1;
+      const daysToAdd = durationInMonths * 30;
+
+      // Extend subscription
       const currentEnd = org.currentPeriodEnd && org.currentPeriodEnd > new Date() 
         ? org.currentPeriodEnd 
         : new Date();
       
       const newPeriodEnd = new Date(currentEnd);
-      newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+      newPeriodEnd.setDate(newPeriodEnd.getDate() + daysToAdd);
 
       await prisma.$transaction([
         prisma.organization.update({

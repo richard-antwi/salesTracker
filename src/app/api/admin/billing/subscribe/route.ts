@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
+    const durationInMonths = Number(body.durationInMonths) || 1;
+
     const session = await getCurrentSession();
     if (!session || session.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized. Only Fleet Owners can access billing.' }, { status: 401 });
@@ -21,13 +24,17 @@ export async function POST() {
       return NextResponse.json({ error: 'Organization not found' }, { status: 404 });
     }
 
-    // Get current subscription fee from global settings
+    // Get current subscription fee from global settings (per month)
     let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
     if (!settings) {
       settings = await prisma.systemSettings.create({ data: { id: 'global', monthlySubscriptionFee: 50 } });
     }
 
-    const feeInPesewas = Math.round(Number(settings.monthlySubscriptionFee) * 100);
+    const baseFee = Number(settings.monthlySubscriptionFee);
+    
+    // Apply discount for longer durations (optional, currently straight multiplication)
+    const totalFee = baseFee * durationInMonths;
+    const feeInPesewas = Math.round(totalFee * 100);
 
     const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecret) {
@@ -52,6 +59,7 @@ export async function POST() {
         metadata: {
           type: 'SAAS_SUBSCRIPTION',
           organizationId: org.id,
+          durationInMonths, // Send duration to verify API
         },
       }),
     });

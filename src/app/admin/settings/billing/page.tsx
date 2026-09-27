@@ -17,6 +17,7 @@ export default function AdminBillingPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState('');
+  const [selectedMonths, setSelectedMonths] = useState<1 | 3 | 6 | 12>(1);
 
   useEffect(() => {
     async function init() {
@@ -49,7 +50,11 @@ export default function AdminBillingPage() {
   async function handleSubscribe() {
     try {
       setPaying(true);
-      const res = await fetch('/api/admin/billing/subscribe', { method: 'POST' });
+      const res = await fetch('/api/admin/billing/subscribe', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ durationInMonths: selectedMonths })
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       
@@ -72,6 +77,8 @@ export default function AdminBillingPage() {
   
   const isTrial = organization.subscriptionStatus === 'TRIAL';
   const isTrialExpired = isTrial && organization.trialEndsAt && new Date(organization.trialEndsAt) < new Date();
+
+  const totalFee = fee * selectedMonths;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-6 lg:p-8">
@@ -125,14 +132,24 @@ export default function AdminBillingPage() {
                 </span>
               </div>
             ) : (
-              <div className="shrink-0 w-full sm:w-auto">
+              <div className="shrink-0 w-full sm:w-auto flex flex-col gap-3">
+                <select 
+                  value={selectedMonths}
+                  onChange={(e) => setSelectedMonths(Number(e.target.value) as any)}
+                  className="bg-slate-950 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm outline-none focus:border-amber-500"
+                >
+                  <option value={1}>1 Month (GH₵{fee})</option>
+                  <option value={3}>3 Months (GH₵{fee * 3})</option>
+                  <option value={6}>6 Months (GH₵{fee * 6})</option>
+                  <option value={12}>1 Year (GH₵{fee * 12})</option>
+                </select>
                 <button
                   onClick={handleSubscribe}
                   disabled={paying}
                   className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {paying ? 'Connecting to Paystack...' : (
-                    <>Renew Access (GH₵{fee}) <ArrowRight className="w-4 h-4" /></>
+                    <>Pay GH₵{totalFee} <ArrowRight className="w-4 h-4" /></>
                   )}
                 </button>
               </div>

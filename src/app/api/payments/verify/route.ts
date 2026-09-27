@@ -42,13 +42,17 @@ export async function GET(request: Request) {
       const existingSub = await prisma.subscriptionPayment.findFirst({ where: { reference } });
       if (existingSub) return NextResponse.json({ success: true, message: 'Already processed' });
 
-      // Extend subscription by 30 days
+      // Calculate new end date based on duration in months
+      const durationInMonths = verifyResponse.data.metadata.durationInMonths || 1;
+      const daysToAdd = durationInMonths * 30;
+
+      // Extend subscription
       const currentEnd = org.currentPeriodEnd && org.currentPeriodEnd > new Date() 
         ? org.currentPeriodEnd 
         : new Date();
       
       const newPeriodEnd = new Date(currentEnd);
-      newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+      newPeriodEnd.setDate(newPeriodEnd.getDate() + daysToAdd);
 
       await prisma.$transaction([
         prisma.organization.update({
