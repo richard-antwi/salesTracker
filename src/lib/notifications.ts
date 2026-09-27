@@ -564,6 +564,67 @@ export class NotificationService {
   }
 
   // Trigger 10: Password Reset
+  async sendAgreementCreatedRider(rider: { name: string; email: string | null }, agreement: any) {
+    if (!rider.email) return;
+
+    const htmlMsg = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; color: #333;">
+        <h2 style="color: #0f172a;">Congratulations on your new motorcycle!</h2>
+        <p>Hi ${rider.name},</p>
+        <p>We are thrilled to officially welcome you to the Work & Pay program! Your Hire-Purchase agreement has been successfully created.</p>
+        
+        <div style="background: #f8fafc; padding: 15px; border-left: 4px solid #0284c7; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #0284c7;">Contract Overview</h3>
+          <p><strong>Vehicle:</strong> ${agreement.makeModel} (${agreement.registrationNo})</p>
+          <p><strong>Total Value:</strong> ${CONFIG.CURRENCY_SYMBOL} ${Number(agreement.hirePurchasePrice).toLocaleString()}</p>
+          <p><strong>Installment:</strong> ${CONFIG.CURRENCY_SYMBOL} ${Number(agreement.installmentAmount).toLocaleString()} / ${agreement.frequency.toLowerCase()}</p>
+          <p><strong>Total Installments:</strong> ${agreement.totalInstallments}</p>
+        </div>
+
+        <p>You can track all your payments, view your outstanding balance, and manage your account by logging in.</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${CONFIG.APP_URL}/login" style="background: #0284c7; color: #ffffff; padding: 12px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View Your Account</a>
+        </div>
+        <p>Ride safely and profitably!</p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to: rider.email,
+      subject: 'Welcome to Work & Pay - Contract Details',
+      html: htmlMsg,
+    });
+  }
+
+  async sendAgreementCreatedOwner(ownerEmail: string | null, ownerName: string, agreement: any) {
+    if (!ownerEmail) return;
+
+    const htmlMsg = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; color: #333;">
+        <h2 style="color: #0f172a;">New Agreement Active</h2>
+        <p>Hi ${ownerName},</p>
+        <p>A new Hire-Purchase agreement has been successfully created and activated on the platform.</p>
+        
+        <div style="background: #f8fafc; padding: 15px; border-left: 4px solid #059669; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #059669;">Agreement Summary</h3>
+          <p><strong>Rider:</strong> ${agreement.hirer.name} (${agreement.hirer.phone})</p>
+          <p><strong>Vehicle:</strong> ${agreement.makeModel} (${agreement.registrationNo})</p>
+          <p><strong>Total Value:</strong> ${CONFIG.CURRENCY_SYMBOL} ${Number(agreement.hirePurchasePrice).toLocaleString()}</p>
+          <p><strong>Installment:</strong> ${CONFIG.CURRENCY_SYMBOL} ${Number(agreement.installmentAmount).toLocaleString()} / ${agreement.frequency.toLowerCase()}</p>
+        </div>
+
+        <p>You can review the full contract details and start tracking payments immediately on your dashboard.</p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to: ownerEmail,
+      subject: 'New Hire-Purchase Agreement Created',
+      html: htmlMsg,
+    });
+  }
+
   async sendPasswordReset(email: string, name: string, resetLink: string) {
     const textMsg = `Hello ${name}, reset your Work & Pay password here: ${resetLink} (Expires in 1 hour)`;
     const htmlMsg = `

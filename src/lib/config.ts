@@ -1,6 +1,6 @@
 export const CONFIG = {
   APP_NAME: 'Work & Pay',
-  CURRENCY_SYMBOL: 'GH₵',
+  CURRENCY_SYMBOL: 'GHS',
   CURRENCY_CODE: 'GHS',
   GRACE_PERIOD_DAYS: parseInt(process.env.GRACE_PERIOD_DAYS || '7', 10),
   JWT_SECRET: process.env.JWT_SECRET || 'work_and_pay_fallback_dev_secret_2026',
