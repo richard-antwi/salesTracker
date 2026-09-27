@@ -61,6 +61,31 @@ export class PaystackService {
       console.error('Paystack Initialize Error:', error);
       return { success: false, error: error.message };
     }
+  public async verifyTransaction(reference: string): Promise<{ success: boolean; data?: any; error?: string }> {
+    if (!CONFIG.PAYSTACK_SECRET_KEY) {
+      return { success: true, data: { status: 'success', reference } };
+    }
+
+    try {
+      const response = await fetch(`${PaystackService.BASE_URL}/transaction/verify/${reference}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.PAYSTACK_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.status) {
+        throw new Error(`Paystack Verify Error: ${data.message}`);
+      }
+
+      return { success: true, data: data.data };
+    } catch (error: any) {
+      console.error('Paystack Verify Error:', error);
+      return { success: false, error: error.message };
+    }
   }
 }
 

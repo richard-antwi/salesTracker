@@ -117,6 +117,24 @@ export default function RiderMyAgreementPage() {
   useEffect(() => {
     async function fetchRiderAgreement() {
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const trxref = urlParams.get('reference');
+
+        if (trxref) {
+          // Tell the user we are verifying the payment
+          setError('');
+          try {
+            const verifyRes = await fetch(`/api/payments/verify?reference=${trxref}`);
+            const verifyData = await verifyRes.json();
+            if (verifyRes.ok && verifyData.success) {
+              // Successfully verified, clear the URL so it doesn't verify again on refresh
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } catch (e) {
+            console.error('Error verifying transaction on return:', e);
+          }
+        }
+
         const res = await fetch('/api/agreements');
         const data = await res.json();
 
