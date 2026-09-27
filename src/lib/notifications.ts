@@ -96,7 +96,7 @@ export class BrevoSmtpEmailProvider implements EmailProvider {
 
     try {
       const info = await this.transporter.sendMail({
-        from: `"Work & Pay" <${CONFIG.BREVO_SMTP_USER}>`, // Brevo requires the sender email to match the verified sender in their dashboard
+        from: CONFIG.EMAIL_FROM_ADDRESS || `"Work & Pay" <${CONFIG.ADMIN_EMAIL}>`, // Must be a verified sender in Brevo
         to,
         subject,
         html,
