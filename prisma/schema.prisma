@@ -111,6 +111,7 @@ model Agreement {
   gracePeriodDays   Int               @default(7)
 
   guarantors        Guarantor[]
+  witnesses         Witness[]
   payments          Payment[]
   statusLogs        StatusChangeLog[]
   documents         Document[]
@@ -123,6 +124,15 @@ model Guarantor {
   agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
   name        String
   phone       String
+  createdAt   DateTime  @default(now())
+}
+
+model Witness {
+  id          String    @id @default(cuid())
+  agreementId String
+  agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
   createdAt   DateTime  @default(now())
 }
 

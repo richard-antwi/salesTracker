@@ -26,6 +26,9 @@ export default function NewAgreementPage() {
   // Guarantors
   const [guarantors, setGuarantors] = useState([{ name: '', phone: '', touched: false }]);
 
+  // Witnesses
+  const [witnesses, setWitnesses] = useState([{ name: '', phone: '', touched: false }]);
+
   // Phone Touched / Validation States
   const [ownerPhoneTouched, setOwnerPhoneTouched] = useState(false);
   const [hirerPhoneTouched, setHirerPhoneTouched] = useState(false);
@@ -98,6 +101,7 @@ export default function NewAgreementPage() {
     setOwnerPhoneTouched(true);
     setHirerPhoneTouched(true);
     setGuarantors(guarantors.map(g => ({ ...g, touched: true })));
+    setWitnesses(witnesses.map(w => ({ ...w, touched: true })));
 
     if (!isValidGhanaPhone(ownerPhone)) {
       setError('Owner Phone number is invalid. Enter a 10-digit Ghana number starting with 0 (e.g. 0244123456).');
@@ -122,6 +126,19 @@ export default function NewAgreementPage() {
       }
     }
 
+    // Validate witnesses
+    const activeWitnesses = witnesses.filter(w => w.name.trim().length > 0 || w.phone.trim().length > 0);
+    for (let i = 0; i < activeWitnesses.length; i++) {
+      if (activeWitnesses[i].phone && !isValidGhanaPhone(activeWitnesses[i].phone)) {
+        setError(`Witness ${i + 1} phone number is invalid. Enter a 10-digit Ghana number starting with 0, or leave it empty.`);
+        return;
+      }
+      if (!activeWitnesses[i].name.trim()) {
+        setError(`Witness ${i + 1} name is missing. Please provide a name.`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -136,6 +153,7 @@ export default function NewAgreementPage() {
           hirerEmail,
           hirerPassword: hirerPassword || undefined,
           guarantors: activeGuarantors,
+          witnesses: activeWitnesses,
           makeModel,
           registrationNo,
           chassisNo,
@@ -411,6 +429,81 @@ export default function NewAgreementPage() {
                   className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
                 >
                   + Add Another Guarantor
+                </button>
+              </div>
+            </div>
+
+            {/* Section 3.5: Witnesses */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-sm border-b border-slate-100 pb-2">
+                <User className="w-4 h-4 text-purple-600" />
+                <span>3.5 Witnesses (Optional)</span>
+              </div>
+              <div className="space-y-4">
+                {witnesses.map((witness, index) => {
+                  const phoneError = witness.touched && witness.phone.trim().length > 0 && !isValidGhanaPhone(witness.phone)
+                    ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
+                  return (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-slate-100 p-4 rounded-xl bg-slate-50/50 relative">
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setWitnesses(witnesses.filter((_, i) => i !== index))}
+                          className="absolute -top-2 -right-2 bg-rose-100 text-rose-600 rounded-full p-1 hover:bg-rose-200 transition-colors"
+                          title="Remove Witness"
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Witness {index + 1} Name</label>
+                        <input
+                          type="text"
+                          value={witness.name}
+                          onChange={(e) => {
+                            const newW = [...witnesses];
+                            newW[index].name = e.target.value;
+                            setWitnesses(newW);
+                          }}
+                          placeholder="e.g. Samuel Ofori"
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Witness {index + 1} Phone</label>
+                        <input
+                          type="text"
+                          value={witness.phone}
+                          onChange={(e) => {
+                            const newW = [...witnesses];
+                            newW[index].phone = e.target.value;
+                            if (!newW[index].touched) newW[index].touched = true;
+                            setWitnesses(newW);
+                          }}
+                          onBlur={() => {
+                            const newW = [...witnesses];
+                            newW[index].touched = true;
+                            setWitnesses(newW);
+                          }}
+                          placeholder="e.g. 0244556677"
+                          className={`input-field ${phoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
+                        />
+                        {phoneError && (
+                          <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {phoneError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setWitnesses([...witnesses, { name: '', phone: '', touched: false }])}
+                  className="text-xs font-semibold text-purple-600 hover:text-purple-700 flex items-center gap-1 bg-purple-50 px-3 py-1.5 rounded-lg transition-colors border border-purple-100"
+                >
+                  + Add Another Witness
                 </button>
               </div>
             </div>

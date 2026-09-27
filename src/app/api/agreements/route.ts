@@ -84,6 +84,7 @@ export async function POST(request: Request) {
       hirerEmail,
       hirerPassword,
       guarantors = [], // Array of { name: string, phone: string }
+      witnesses = [], // Array of { name: string, phone: string }
       guarantor1Name,
       guarantor1Phone,
       guarantor2Name,
@@ -268,12 +269,19 @@ export async function POST(request: Request) {
             name: g.name,
             phone: g.phone,
           })),
+        },
+        witnesses: {
+          create: witnesses.map((w: any) => ({
+            name: w.name,
+            phone: w.phone,
+          })),
         }
       },
       include: {
         hirer: true,
         vehicle: true,
         guarantors: true,
+        witnesses: true,
       },
     });
 
