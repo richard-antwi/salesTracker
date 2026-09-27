@@ -61,6 +61,8 @@ export class PaystackService {
       console.error('Paystack Initialize Error:', error);
       return { success: false, error: error.message };
     }
+  }
+
   public async verifyTransaction(reference: string): Promise<{ success: boolean; data?: any; error?: string }> {
     if (!CONFIG.PAYSTACK_SECRET_KEY) {
       return { success: true, data: { status: 'success', reference } };
