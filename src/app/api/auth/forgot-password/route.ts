@@ -47,9 +47,8 @@ export async function POST(request: Request) {
       },
     });
 
-    const host = request.headers.get('host') || 'salestrackergh.vercel.app';
-    const protocol = host.includes('localhost') ? 'http' : 'https';
-    const resetLink = `${protocol}://${host}/reset-password?token=${resetToken}`;
+    const reqUrl = new URL(request.url);
+    const resetLink = `${reqUrl.protocol}//${reqUrl.host}/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
       from: `"Work & Pay Ghana" <${process.env.GMAIL_USER}>`,
