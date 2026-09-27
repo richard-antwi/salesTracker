@@ -70,44 +70,46 @@ export class GmailSmtpEmailProvider implements EmailProvider {
   }
 }
 
-// 1.5 Brevo SMTP Email Provider (Excellent for non-custom domains like vercel.app)
-export class BrevoSmtpEmailProvider implements EmailProvider {
-  private transporter: Transporter | null = null;
-
-  constructor() {
-    if (CONFIG.BREVO_SMTP_USER && CONFIG.BREVO_SMTP_PASSWORD) {
-      this.transporter = nodemailer.createTransport({
-        host: 'smtp-relay.brevo.com',
-        port: 587,
-        secure: false,
-        auth: {
-          user: CONFIG.BREVO_SMTP_USER,
-          pass: CONFIG.BREVO_SMTP_PASSWORD,
-        },
-      });
-    }
-  }
-
+// 1.5 Brevo API Email Provider (Bypasses SMTP IP Restrictions)
+export class BrevoApiEmailProvider implements EmailProvider {
   async send({ to, subject, html, text }: SendEmailOptions) {
-    if (!this.transporter || !CONFIG.BREVO_SMTP_USER) {
-      console.log(`\n📧 [BREVO STUB MODE] (Missing Credentials)`);
+    if (!CONFIG.BREVO_SMTP_PASSWORD) {
+      console.log(`\n📧 [BREVO API STUB MODE] (Missing Credentials)`);
       return { success: true, id: 'fallback-dev-id' };
     }
 
     try {
-      const info = await this.transporter.sendMail({
-        from: CONFIG.EMAIL_FROM_ADDRESS || `"Work & Pay" <${CONFIG.ADMIN_EMAIL}>`, // Must be a verified sender in Brevo
-        to,
-        subject,
-        html,
-        text: text || html.replace(/<[^>]+>/g, ''),
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': CONFIG.BREVO_SMTP_PASSWORD, // We repurpose this env var to hold the API key
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { 
+            name: 'Work & Pay', 
+            email: CONFIG.EMAIL_FROM_ADDRESS?.match(/<([^>]+)>/)?.[1] || CONFIG.ADMIN_EMAIL 
+          },
+          to: [{ email: to }],
+          subject,
+          htmlContent: html,
+          textContent: text || html.replace(/<[^>]+>/g, '')
+        })
       });
 
-      console.log(`✅ [BREVO SMTP LIVE] Email sent to ${to} (MessageID: ${info.messageId})`);
-      return { success: true, id: info.messageId };
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Brevo API Error:', data);
+        return { success: false, error: data.message };
+      }
+
+      console.log(`✅ [BREVO API LIVE] Email sent to ${to} (MessageID: ${data.messageId})`);
+      return { success: true, id: data.messageId };
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : 'Unknown Brevo SMTP Error';
-      console.error('Brevo SMTP Exception:', errMsg);
+      const errMsg = err instanceof Error ? err.message : 'Unknown Brevo API Error';
+      console.error('Brevo API Exception:', errMsg);
       return { success: false, error: errMsg };
     }
   }
@@ -207,7 +209,7 @@ export class NotificationService {
       if (CONFIG.EMAIL_PROVIDER === 'RESEND') {
         this.emailProvider = new ResendEmailProvider();
       } else if (CONFIG.EMAIL_PROVIDER === 'BREVO') {
-        this.emailProvider = new BrevoSmtpEmailProvider();
+        this.emailProvider = new BrevoApiEmailProvider();
       } else {
         this.emailProvider = new GmailSmtpEmailProvider();
       }
