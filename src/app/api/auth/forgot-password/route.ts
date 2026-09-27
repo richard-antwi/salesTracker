@@ -43,7 +43,11 @@ export async function POST(request: Request) {
     const resetLink = `${reqUrl.protocol}//${reqUrl.host}/reset-password?token=${resetToken}`;
 
     const { notifications } = await import('@/lib/notifications');
-    await notifications.sendPasswordReset(user.email, user.name, resetLink);
+    const result = await notifications.sendPasswordReset(user.email, user.name, resetLink);
+    
+    if (result && !result.success) {
+      return NextResponse.json({ error: 'Failed to send email via provider', details: result.error }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true, message: 'Password reset email sent' });
   } catch (error: any) {

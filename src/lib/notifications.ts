@@ -574,7 +574,7 @@ export class NotificationService {
       </div>
     `;
 
-    await this.emailProvider.send({
+    return await this.emailProvider.send({
       to: email,
       subject: 'Password Reset Request - Work & Pay',
       html: htmlMsg,
