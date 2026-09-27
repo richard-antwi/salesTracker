@@ -118,17 +118,25 @@ export default function AdminBillingPage() {
               </p>
             </div>
 
-            <div className="shrink-0 w-full sm:w-auto">
-              <button
-                onClick={handleSubscribe}
-                disabled={paying}
-                className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {paying ? 'Connecting to Paystack...' : (
-                  <>Renew Access (GH₵{fee}) <ArrowRight className="w-4 h-4" /></>
-                )}
-              </button>
-            </div>
+            {!isTrial && !isPastDue && organization.subscriptionStatus === 'ACTIVE' ? (
+              <div className="shrink-0 w-full sm:w-auto">
+                <span className="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 font-bold px-6 py-3 rounded-xl border border-emerald-500/20">
+                  <CheckCircle2 className="w-5 h-5" /> All Set!
+                </span>
+              </div>
+            ) : (
+              <div className="shrink-0 w-full sm:w-auto">
+                <button
+                  onClick={handleSubscribe}
+                  disabled={paying}
+                  className="w-full sm:w-auto bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-3 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {paying ? 'Connecting to Paystack...' : (
+                    <>Renew Access (GH₵{fee}) <ArrowRight className="w-4 h-4" /></>
+                  )}
+                </button>
+              </div>
+            )}
 
           </div>
         </div>
