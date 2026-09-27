@@ -70,6 +70,49 @@ export class GmailSmtpEmailProvider implements EmailProvider {
   }
 }
 
+// 1.5 Brevo SMTP Email Provider (Excellent for non-custom domains like vercel.app)
+export class BrevoSmtpEmailProvider implements EmailProvider {
+  private transporter: Transporter | null = null;
+
+  constructor() {
+    if (CONFIG.BREVO_SMTP_USER && CONFIG.BREVO_SMTP_PASSWORD) {
+      this.transporter = nodemailer.createTransport({
+        host: 'smtp-relay.brevo.com',
+        port: 587,
+        secure: false,
+        auth: {
+          user: CONFIG.BREVO_SMTP_USER,
+          pass: CONFIG.BREVO_SMTP_PASSWORD,
+        },
+      });
+    }
+  }
+
+  async send({ to, subject, html, text }: SendEmailOptions) {
+    if (!this.transporter || !CONFIG.BREVO_SMTP_USER) {
+      console.log(`\n📧 [BREVO STUB MODE] (Missing Credentials)`);
+      return { success: true, id: 'fallback-dev-id' };
+    }
+
+    try {
+      const info = await this.transporter.sendMail({
+        from: `"Work & Pay" <${CONFIG.BREVO_SMTP_USER}>`, // Brevo requires the sender email to match the verified sender in their dashboard
+        to,
+        subject,
+        html,
+        text: text || html.replace(/<[^>]+>/g, ''),
+      });
+
+      console.log(`✅ [BREVO SMTP LIVE] Email sent to ${to} (MessageID: ${info.messageId})`);
+      return { success: true, id: info.messageId };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown Brevo SMTP Error';
+      console.error('Brevo SMTP Exception:', errMsg);
+      return { success: false, error: errMsg };
+    }
+  }
+}
+
 // 2. Resend Email Provider (Retained as backup option)
 export class ResendEmailProvider implements EmailProvider {
   private resend: Resend | null = null;
@@ -161,9 +204,13 @@ export class NotificationService {
     if (emailProvider) {
       this.emailProvider = emailProvider;
     } else {
-      this.emailProvider = CONFIG.EMAIL_PROVIDER === 'RESEND' 
-        ? new ResendEmailProvider() 
-        : new GmailSmtpEmailProvider();
+      if (CONFIG.EMAIL_PROVIDER === 'RESEND') {
+        this.emailProvider = new ResendEmailProvider();
+      } else if (CONFIG.EMAIL_PROVIDER === 'BREVO') {
+        this.emailProvider = new BrevoSmtpEmailProvider();
+      } else {
+        this.emailProvider = new GmailSmtpEmailProvider();
+      }
     }
     this.smsProvider = smsProvider;
   }

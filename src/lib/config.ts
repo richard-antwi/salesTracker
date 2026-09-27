@@ -7,8 +7,12 @@ export const CONFIG = {
   DEFAULT_PAYMENT_CHANNEL: 'MOMO' as const,
   PAYMENT_CHANNELS: ['MOMO', 'CASH', 'BANK'] as const,
 
-  // Email Provider Toggle (GMAIL or RESEND)
+  // Email Provider Toggle (GMAIL, RESEND, or BREVO)
   EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || 'GMAIL',
+
+  // Brevo SMTP Configuration (Recommended for vercel.app domains)
+  BREVO_SMTP_USER: process.env.BREVO_SMTP_USER || '',
+  BREVO_SMTP_PASSWORD: process.env.BREVO_SMTP_PASSWORD || '',
 
   // Gmail SMTP Notification Configuration
   // Note: Gmail free tier caps at ~500 emails/day. Sender display shows user's Gmail address.
