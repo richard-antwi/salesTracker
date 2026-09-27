@@ -47,6 +47,12 @@ model Organization {
   statusLogs   StatusChangeLog[]
   documents    Document[]
   withdrawalRequests WithdrawalRequest[]
+  walletChangeRequests WalletChangeRequest[]
+
+  // Verified Payout Wallet details (only set by Super Admin after verification)
+  payoutNetwork            String?
+  payoutAccountName        String?
+  payoutAccountNumber      String?
 }
 
 model User {
@@ -243,6 +249,26 @@ model WithdrawalRequest {
 }
 
 enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+
+model WalletChangeRequest {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  requestedBy      String
+  newNetwork       String
+  newAccountName   String
+  newAccountNumber String
+  status           WalletChangeStatus @default(PENDING)
+  createdAt        DateTime     @default(now())
+  resolvedAt       DateTime?
+}
+
+enum WalletChangeStatus {
   PENDING
   APPROVED
   REJECTED

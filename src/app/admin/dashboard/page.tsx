@@ -61,16 +61,24 @@ export default function AdminDashboardPage() {
   const [requestingWithdrawal, setRequestingWithdrawal] = useState(false);
   const [withdrawalAmount, setWithdrawalAmount] = useState('');
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawalHistory, setWithdrawalHistory] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchAgreements() {
       try {
-        const res = await fetch('/api/agreements');
-        const data = await res.json();
-        if (res.ok && data.agreements) {
+        const [agrRes, withRes] = await Promise.all([
+          fetch('/api/agreements'),
+          fetch('/api/admin/withdrawals')
+        ]);
+        const data = await agrRes.json();
+        if (agrRes.ok && data.agreements) {
           setAgreements(data.agreements);
           setIsDemo(data.isDemo || false);
           if (data.finances) setFinances(data.finances);
+        }
+        const withData = await withRes.json();
+        if (withRes.ok && withData.withdrawals) {
+          setWithdrawalHistory(withData.withdrawals);
         }
       } catch (err) {
         console.error('Failed to load agreements:', err);
@@ -105,6 +113,9 @@ export default function AdminDashboardPage() {
         totalWithdrawn: finances.totalWithdrawn + Number(withdrawalAmount),
         totalAmountWithUs: finances.totalAmountWithUs - Number(withdrawalAmount)
       });
+      if (data.withdrawal) {
+        setWithdrawalHistory(prev => [data.withdrawal, ...prev]);
+      }
     } catch (err: any) {
       alert(err.message || 'Failed to submit withdrawal request');
     } finally {
@@ -254,28 +265,73 @@ export default function AdminDashboardPage() {
 
       {/* Financial Overview (Admin Only) */}
       {finances && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-1">
-              Escrow Balance (Digital Payments)
-            </span>
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-black text-white">
-                GH₵ {finances.totalAmountWithUs.toFixed(2)}
+        <div className="space-y-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-1">
+                Escrow Balance (Digital Payments)
               </span>
-              <span className="text-xs text-slate-400 font-medium">
-                (Total Collected: GH₵ {finances.totalDigitalCollected.toFixed(2)})
-              </span>
+              <div className="flex items-baseline gap-3">
+                <span className="text-3xl font-black text-white">
+                  GH₵ {finances.totalAmountWithUs.toFixed(2)}
+                </span>
+                <span className="text-xs text-slate-400 font-medium">
+                  (Total Collected: GH₵ {finances.totalDigitalCollected.toFixed(2)})
+                </span>
+              </div>
+            </div>
+            <div>
+              <button
+                onClick={() => setShowWithdrawModal(true)}
+                className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-4 h-4" /> Request Withdrawal
+              </button>
             </div>
           </div>
-          <div>
-            <button
-              onClick={() => setShowWithdrawModal(true)}
-              className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
-            >
-              <CreditCard className="w-4 h-4" /> Request Withdrawal
-            </button>
-          </div>
+
+          {/* Withdrawal History */}
+          {withdrawalHistory.length > 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-3">Recent Withdrawal Requests</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 text-[10px] uppercase tracking-wider bg-slate-50">
+                      <th className="py-2.5 px-4 font-bold">Date</th>
+                      <th className="py-2.5 px-4 font-bold">Amount</th>
+                      <th className="py-2.5 px-4 font-bold">Status</th>
+                      <th className="py-2.5 px-4 font-bold text-right">Settled At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-xs divide-y divide-slate-100">
+                    {withdrawalHistory.map(req => (
+                      <tr key={req.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-2.5 px-4 font-medium text-slate-700">
+                          {new Date(req.createdAt).toLocaleDateString('en-GB')}
+                        </td>
+                        <td className="py-2.5 px-4 font-extrabold text-slate-900">
+                          GH₵ {Number(req.amount).toFixed(2)}
+                        </td>
+                        <td className="py-2.5 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            req.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            req.status === 'REJECTED' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                            'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {req.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-right text-slate-500">
+                          {req.resolvedAt ? new Date(req.resolvedAt).toLocaleDateString('en-GB') : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -596,6 +652,11 @@ export default function AdminDashboardPage() {
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1">Available balance: GH₵ {finances?.totalAmountWithUs.toFixed(2)}</p>
               </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-[10px] text-amber-800 font-medium">
+                <strong>Note:</strong> Due to payment gateway processing, funds from recent digital payments take 24-48 business hours to settle into our main account. Withdrawal requests are typically processed within 1-2 business days.
+              </div>
+
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="button"

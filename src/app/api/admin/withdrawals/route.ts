@@ -2,6 +2,25 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 
+export async function GET() {
+  try {
+    const session = await getCurrentSession();
+    if (!session || session.role !== 'ADMIN' || !session.organizationId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const withdrawals = await prisma.withdrawalRequest.findMany({
+      where: { organizationId: session.organizationId },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    return NextResponse.json({ withdrawals });
+  } catch (error) {
+    console.error('Error fetching withdrawals:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getCurrentSession();

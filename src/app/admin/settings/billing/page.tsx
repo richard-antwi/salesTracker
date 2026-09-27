@@ -8,6 +8,10 @@ interface BillingStatus {
     subscriptionStatus: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED';
     trialEndsAt: string | null;
     currentPeriodEnd: string | null;
+    payoutNetwork?: string | null;
+    payoutAccountName?: string | null;
+    payoutAccountNumber?: string | null;
+    walletChangeRequests?: { status: string }[];
   };
   fee: number;
 }
@@ -18,6 +22,35 @@ export default function AdminBillingPage() {
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState('');
   const [selectedMonths, setSelectedMonths] = useState<1 | 3 | 6 | 12>(1);
+
+  // Wallet form state
+  const [showWalletForm, setShowWalletForm] = useState(false);
+  const [walletForm, setWalletForm] = useState({ network: 'MTN', name: '', number: '' });
+  const [walletSaving, setWalletSaving] = useState(false);
+
+  async function handleWalletSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setWalletSaving(true);
+    try {
+      const res = await fetch('/api/admin/wallet-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          newNetwork: walletForm.network,
+          newAccountName: walletForm.name,
+          newAccountNumber: walletForm.number
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert('Wallet change requested successfully! The Super Admin will verify this change.');
+      window.location.reload();
+    } catch (err: any) {
+      alert(err.message || 'Failed to request wallet change');
+    } finally {
+      setWalletSaving(false);
+    }
+  }
 
   useEffect(() => {
     async function init() {
@@ -176,6 +209,112 @@ export default function AdminBillingPage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Payout Wallet Section */}
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div>
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                Verified Payout Wallet
+              </h3>
+              <p className="text-xs text-slate-400 mt-1">
+                Where your digital collections will be sent. For security, changes require verification.
+              </p>
+            </div>
+            {!showWalletForm && (
+              <button
+                onClick={() => setShowWalletForm(true)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg transition-colors border border-slate-700"
+              >
+                Change Wallet
+              </button>
+            )}
+          </div>
+
+          {organization.walletChangeRequests && organization.walletChangeRequests.length > 0 ? (
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+              <div>
+                <p className="text-sm font-bold text-amber-400">Wallet Change Pending</p>
+                <p className="text-xs text-amber-200 mt-1">
+                  Your request is being reviewed. The Super Admin will contact you to verify your identity before approving the change.
+                </p>
+              </div>
+            </div>
+          ) : showWalletForm ? (
+            <form onSubmit={handleWalletSubmit} className="space-y-4 bg-slate-950/50 p-5 rounded-2xl border border-slate-800">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Network/Bank</label>
+                  <select
+                    value={walletForm.network}
+                    onChange={(e) => setWalletForm({ ...walletForm, network: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                  >
+                    <option value="MTN">MTN Mobile Money</option>
+                    <option value="VODAFONE">Telecel Cash</option>
+                    <option value="AIRTELTIGO">AT Money</option>
+                    <option value="BANK">Bank Account</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    required
+                    value={walletForm.number}
+                    onChange={(e) => setWalletForm({ ...walletForm, number: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="e.g. 0550000000"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-400 mb-1">Account Name (Must Match Registration)</label>
+                  <input
+                    type="text"
+                    required
+                    value={walletForm.name}
+                    onChange={(e) => setWalletForm({ ...walletForm, name: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    placeholder="e.g. Kwame Mensah"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWalletForm(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-white text-sm font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={walletSaving}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-bold rounded-xl transition-colors shadow-lg"
+                >
+                  {walletSaving ? 'Submitting...' : 'Submit Request'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-950 rounded-xl p-4 border border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Network</p>
+                <p className="text-sm font-semibold text-white">{organization.payoutNetwork || 'Not Set'}</p>
+              </div>
+              <div className="bg-slate-950 rounded-xl p-4 border border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Account Name</p>
+                <p className="text-sm font-semibold text-white">{organization.payoutAccountName || 'Not Set'}</p>
+              </div>
+              <div className="bg-slate-950 rounded-xl p-4 border border-slate-800">
+                <p className="text-[10px] uppercase font-bold text-slate-500 mb-1">Account Number</p>
+                <p className="text-sm font-semibold text-white">{organization.payoutAccountNumber || 'Not Set'}</p>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>

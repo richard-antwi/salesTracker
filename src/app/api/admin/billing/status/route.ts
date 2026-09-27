@@ -20,6 +20,13 @@ export async function GET() {
         subscriptionStatus: true,
         trialEndsAt: true,
         currentPeriodEnd: true,
+        payoutNetwork: true,
+        payoutAccountName: true,
+        payoutAccountNumber: true,
+        walletChangeRequests: {
+          where: { status: 'PENDING' },
+          take: 1
+        }
       }
     });
 

@@ -24,20 +24,32 @@ interface OrganizationRecord {
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
   const [organizations, setOrganizations] = useState<OrganizationRecord[]>([]);
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [walletChanges, setWalletChanges] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  async function fetchOrganizations() {
+  async function fetchData() {
     try {
       setLoading(true);
       setError('');
-      const res = await fetch('/api/super-admin/organizations');
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to fetch organizations');
-      }
-      setOrganizations(data.organizations || []);
+      const [orgRes, withdrawRes, walletRes] = await Promise.all([
+        fetch('/api/super-admin/organizations'),
+        fetch('/api/super-admin/withdrawals'),
+        fetch('/api/super-admin/wallet-changes')
+      ]);
+
+      const orgData = await orgRes.json();
+      if (!orgRes.ok) throw new Error(orgData.error || 'Failed to fetch organizations');
+      setOrganizations(orgData.organizations || []);
+
+      const withdrawData = await withdrawRes.json();
+      if (withdrawRes.ok) setWithdrawals(withdrawData.requests || []);
+
+      const walletData = await walletRes.json();
+      if (walletRes.ok) setWalletChanges(walletData.requests || []);
+
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -46,7 +58,7 @@ export default function SuperAdminDashboardPage() {
   }
 
   useEffect(() => {
-    fetchOrganizations();
+    fetchData();
   }, []);
 
   async function handleStatusChange(orgId: string, newStatus: string) {
@@ -61,9 +73,46 @@ export default function SuperAdminDashboardPage() {
       if (!res.ok) {
         throw new Error(data.error || 'Failed to update organization status');
       }
-      await fetchOrganizations();
+      await fetchData();
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : 'Error updating status');
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleWithdrawalStatus(id: string, status: 'APPROVED' | 'REJECTED') {
+    if (!confirm(`Are you sure you want to mark this withdrawal as ${status}?`)) return;
+    setUpdatingId(id);
+    try {
+      const res = await fetch('/api/super-admin/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      if (!res.ok) throw new Error('Failed to update withdrawal');
+      setWithdrawals(prev => prev.map(w => w.id === id ? { ...w, status } : w));
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleWalletStatus(id: string, status: 'APPROVED' | 'REJECTED') {
+    if (!confirm(`Are you sure you want to mark this wallet change as ${status}?`)) return;
+    setUpdatingId(id);
+    try {
+      const res = await fetch('/api/super-admin/wallet-changes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status })
+      });
+      if (!res.ok) throw new Error('Failed to update wallet change');
+      setWalletChanges(prev => prev.map(w => w.id === id ? { ...w, status } : w));
+      if (status === 'APPROVED') fetchData();
+    } catch (err: any) {
+      alert(err.message);
     } finally {
       setUpdatingId(null);
     }
@@ -131,6 +180,136 @@ export default function SuperAdminDashboardPage() {
           <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 p-4 rounded-2xl text-xs flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* 0A. Wallet Change Requests */}
+        {walletChanges.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-amber-900/50 pb-2">
+              <h2 className="text-base font-bold text-amber-400 flex items-center gap-2">
+                <ShieldAlert className="w-5 h-5 text-amber-500" /> Wallet Change Requests ({walletChanges.filter(w => w.status === 'PENDING').length} Pending)
+              </h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {walletChanges.map((req) => (
+                <div key={req.id} className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-5 space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-sm font-bold text-white">{req.organization?.name}</h3>
+                      <p className="text-[10px] text-slate-400">Phone: {req.organization?.contactPhone || 'N/A'}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      req.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                      req.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                      'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    }`}>
+                      {req.status}
+                    </span>
+                  </div>
+                  <div className="bg-slate-900 rounded-xl p-3 border border-slate-800">
+                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">New Wallet Details</p>
+                    <p className="text-sm font-semibold text-slate-200">{req.newNetwork} • {req.newAccountName}</p>
+                    <p className="text-lg font-black text-amber-400 tracking-wider">{req.newAccountNumber}</p>
+                  </div>
+                  {req.status === 'PENDING' && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleWalletStatus(req.id, 'APPROVED')}
+                        disabled={updatingId === req.id}
+                        className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-colors"
+                      >
+                        Approve Change
+                      </button>
+                      <button
+                        onClick={() => handleWalletStatus(req.id, 'REJECTED')}
+                        disabled={updatingId === req.id}
+                        className="flex-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs font-bold py-2 rounded-xl transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 0B. Withdrawal Requests */}
+        {withdrawals.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-900/50 pb-2">
+              <h2 className="text-base font-bold text-emerald-400 flex items-center gap-2">
+                <Wallet className="w-5 h-5 text-emerald-500" /> Withdrawal Requests ({withdrawals.filter(w => w.status === 'PENDING').length} Pending)
+              </h2>
+            </div>
+            <div className="overflow-x-auto bg-slate-900/50 border border-slate-800 rounded-2xl">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-800 text-slate-500 text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-4 font-bold">Organization</th>
+                    <th className="py-3 px-4 font-bold">Wallet Details</th>
+                    <th className="py-3 px-4 font-bold">Amount</th>
+                    <th className="py-3 px-4 font-bold">Status</th>
+                    <th className="py-3 px-4 font-bold text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs divide-y divide-slate-800/50">
+                  {withdrawals.map(req => (
+                    <tr key={req.id} className="hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-slate-200">{req.organization?.name}</p>
+                        <p className="text-[10px] text-slate-500">{new Date(req.createdAt).toLocaleDateString()}</p>
+                      </td>
+                      <td className="py-3 px-4">
+                        {req.organization?.payoutAccountNumber ? (
+                          <>
+                            <p className="font-semibold text-slate-300">{req.organization.payoutNetwork}</p>
+                            <p className="text-slate-400">{req.organization.payoutAccountName}</p>
+                            <p className="text-amber-400 font-mono mt-0.5">{req.organization.payoutAccountNumber}</p>
+                          </>
+                        ) : (
+                          <span className="text-rose-400">No Verified Wallet</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 font-black text-emerald-400 text-sm">
+                        GH₵ {Number(req.amount).toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                          req.status === 'APPROVED' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          req.status === 'REJECTED' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {req.status === 'PENDING' && (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleWithdrawalStatus(req.id, 'APPROVED')}
+                              disabled={updatingId === req.id || !req.organization?.payoutAccountNumber}
+                              className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Mark Paid
+                            </button>
+                            <button
+                              onClick={() => handleWithdrawalStatus(req.id, 'REJECTED')}
+                              disabled={updatingId === req.id}
+                              className="bg-slate-800 hover:bg-slate-700 text-rose-400 font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 
