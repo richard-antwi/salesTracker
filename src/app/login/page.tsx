@@ -124,7 +124,7 @@ export default function LoginPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to send reset link');
+        throw new Error(data.details || data.error || 'Failed to send reset link');
       }
       setForgotPasswordSuccess(true);
     } catch (err: unknown) {
