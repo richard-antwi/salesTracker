@@ -31,7 +31,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, message: 'Already processed' });
     }
 
-    // --- RIDER INSTALLMENT PAYMENT ---
+    // --- 3. SAAS SUBSCRIPTION PAYMENT ---
+    if (verifyResponse.data.metadata?.type === 'SAAS_SUBSCRIPTION' && verifyResponse.data.metadata?.organizationId) {
+      const orgId = verifyResponse.data.metadata.organizationId;
+      
+      const org = await prisma.organization.findUnique({ where: { id: orgId } });
+      if (!org) return NextResponse.json({ error: 'Org not found' }, { status: 404 });
+
+      // Check if already processed
+      const existingSub = await prisma.subscriptionPayment.findFirst({ where: { reference } });
+      if (existingSub) return NextResponse.json({ success: true, message: 'Already processed' });
+
+      // Extend subscription by 30 days
+      const currentEnd = org.currentPeriodEnd && org.currentPeriodEnd > new Date() 
+        ? org.currentPeriodEnd 
+        : new Date();
+      
+      const newPeriodEnd = new Date(currentEnd);
+      newPeriodEnd.setDate(newPeriodEnd.getDate() + 30);
+
+      await prisma.$transaction([
+        prisma.organization.update({
+          where: { id: org.id },
+          data: {
+            subscriptionStatus: 'ACTIVE',
+            currentPeriodEnd: newPeriodEnd,
+          }
+        }),
+        prisma.subscriptionPayment.create({
+          data: {
+            organizationId: org.id,
+            amount: amountPaidGHS,
+            reference: reference,
+            status: 'SUCCESS'
+          }
+        })
+      ]);
+
+      return NextResponse.json({ success: true, message: 'Subscription upgraded successfully' });
+    }
+
+    // --- 4. RIDER INSTALLMENT PAYMENT ---
     const parts = reference.split('_');
     if (parts[0] === 'PAY' && parts.length >= 2) {
       const agreementId = parts[1];

@@ -19,7 +19,22 @@ export default function AdminBillingPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch('/api/admin/billing/status')
+    async function init() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const trxref = urlParams.get('trxref') || urlParams.get('reference');
+
+      if (trxref) {
+        try {
+          const verifyRes = await fetch(`/api/payments/verify?reference=${trxref}`);
+          if (verifyRes.ok) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (e) {
+          console.error('Error verifying transaction:', e);
+        }
+      }
+
+      fetch('/api/admin/billing/status')
       .then(res => res.json())
       .then(data => {
         if (data.error) setError(data.error);
@@ -27,6 +42,8 @@ export default function AdminBillingPage() {
       })
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
+    }
+    init();
   }, []);
 
   async function handleSubscribe() {
