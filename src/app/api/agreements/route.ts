@@ -83,6 +83,7 @@ export async function POST(request: Request) {
       hirerPhone,
       hirerEmail,
       hirerPassword,
+      guarantors = [], // Array of { name: string, phone: string }
       guarantor1Name,
       guarantor1Phone,
       guarantor2Name,
@@ -156,12 +157,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Hirer phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0244123456)' }, { status: 400 });
     }
 
-    if (guarantor1Phone && !isValidGhanaPhone(guarantor1Phone)) {
-      return NextResponse.json({ error: 'Guarantor 1 phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0208889900)' }, { status: 400 });
+    // Merge legacy guarantors into the dynamic array for backward compatibility during transition
+    const allGuarantors = [...guarantors];
+    if (guarantor1Name && guarantor1Phone) {
+      allGuarantors.push({ name: guarantor1Name, phone: guarantor1Phone });
+    }
+    if (guarantor2Name && guarantor2Phone) {
+      allGuarantors.push({ name: guarantor2Name, phone: guarantor2Phone });
     }
 
-    if (guarantor2Phone && !isValidGhanaPhone(guarantor2Phone)) {
-      return NextResponse.json({ error: 'Guarantor 2 phone number must be a valid 10-digit Ghana number starting with 0 (e.g. 0554443322)' }, { status: 400 });
+    for (let i = 0; i < allGuarantors.length; i++) {
+      if (!isValidGhanaPhone(allGuarantors[i].phone)) {
+        return NextResponse.json({ error: `Guarantor ${i + 1} phone number must be a valid 10-digit Ghana number starting with 0` }, { status: 400 });
+      }
     }
 
     const cleanedEmail = hirerEmail?.trim() || null;
@@ -254,10 +262,18 @@ export async function POST(request: Request) {
         lateFeeType: lateFeeType === 'PERCENTAGE' ? 'PERCENTAGE' : 'FLAT',
         lateFeeAmount: lateFeeAmount ? parseFloat(String(lateFeeAmount)) : 0,
         gracePeriodDays: gracePeriodDays ? parseInt(String(gracePeriodDays), 10) : 7,
+        
+        guarantors: {
+          create: allGuarantors.map(g => ({
+            name: g.name,
+            phone: g.phone,
+          })),
+        }
       },
       include: {
         hirer: true,
         vehicle: true,
+        guarantors: true,
       },
     });
 

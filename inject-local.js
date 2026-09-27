@@ -2,7 +2,7 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   datasources: {
     db: {
-      url: 'postgresql://postgres.jhxctmcjbjkicgrlzftr:dbadmin%408888R@aws-0-eu-central-1.pooler.supabase.com:6543/postgres?pgbouncer=true'
+      url: 'postgresql://postgres:admin@localhost:5432/salestracker_multitenant_dev?schema=public'
     }
   }
 });
@@ -25,12 +25,12 @@ async function main() {
           role: 'GUARANTOR',
         }
       });
-      console.log('Created Demo Guarantor:', guarantor.id);
+      console.log('Created Demo Guarantor locally:', guarantor.id);
     } else {
-      console.log('Demo Guarantor already exists');
+      console.log('Demo Guarantor already exists locally');
     }
   } else {
-    console.log('Demo org not found');
+    console.log('Demo org not found locally');
   }
 }
 main().catch(console.error).finally(() => prisma.$disconnect());

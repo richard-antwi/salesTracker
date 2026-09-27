@@ -110,10 +110,20 @@ model Agreement {
   lateFeeAmount     Decimal           @default(0) @db.Decimal(12, 2)
   gracePeriodDays   Int               @default(7)
 
+  guarantors        Guarantor[]
   payments          Payment[]
   statusLogs        StatusChangeLog[]
   documents         Document[]
   createdAt         DateTime          @default(now())
+}
+
+model Guarantor {
+  id          String    @id @default(cuid())
+  agreementId String
+  agreement   Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String
+  createdAt   DateTime  @default(now())
 }
 
 enum Frequency {

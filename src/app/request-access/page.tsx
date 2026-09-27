@@ -11,6 +11,9 @@ export default function RequestAccessPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [requires2FA, setRequires2FA] = useState(false);
+  const [twoFactorToken, setTwoFactorToken] = useState('');
+  const [loading2FA, setLoading2FA] = useState(false);
 
   const [businessName, setBusinessName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -69,6 +72,14 @@ export default function RequestAccessPage() {
         body: JSON.stringify({ identifier: contactPhone, password: adminPassword }),
       });
 
+      const loginData = await loginRes.json();
+      
+      if (loginRes.status === 403 && loginData.requires2FA) {
+        setRequires2FA(true);
+        setLoading(false);
+        return;
+      }
+
       if (!loginRes.ok) {
         throw new Error('Account created, but failed to log in automatically. Please go to login page.');
       }
@@ -78,7 +89,37 @@ export default function RequestAccessPage() {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'An error occurred during submission');
     } finally {
-      setLoading(false);
+      if (!requires2FA) setLoading(false);
+    }
+  }
+
+  async function handle2FASubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    
+    if (twoFactorToken.length !== 6) {
+      setError('Please enter a valid 6-digit code');
+      return;
+    }
+
+    setLoading2FA(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: contactPhone, password: adminPassword, token: twoFactorToken }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Invalid verification code');
+      }
+
+      router.push('/admin/dashboard');
+      router.refresh();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to verify code');
+      setLoading2FA(false);
     }
   }
 
@@ -116,6 +157,50 @@ export default function RequestAccessPage() {
             >
               Return to Login Page
             </Link>
+          </div>
+        ) : requires2FA ? (
+          <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-xl backdrop-blur-sm space-y-6">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mx-auto flex items-center justify-center mb-4">
+                <ShieldCheck className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold text-white">Two-Factor Authentication</h2>
+              <p className="text-xs text-slate-400">
+                We've sent a 6-digit verification code to <strong className="text-emerald-400">{contactEmail}</strong>.
+              </p>
+            </div>
+
+            <form onSubmit={handle2FASubmit} className="space-y-5">
+              {error && (
+                <div className="bg-rose-500/10 border border-rose-500/20 text-rose-300 p-3 rounded-xl text-xs flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  6-Digit Verification Code
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  placeholder="000000"
+                  value={twoFactorToken}
+                  onChange={(e) => setTwoFactorToken(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl text-center text-2xl tracking-[0.5em] font-mono py-4 text-white placeholder-slate-600 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading2FA || twoFactorToken.length !== 6}
+                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 rounded-xl shadow-lg transition-all disabled:opacity-50 inline-flex items-center justify-center gap-2"
+              >
+                {loading2FA ? 'Verifying...' : 'Verify & Continue'}
+              </button>
+            </form>
           </div>
         ) : (
           <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-6 sm:p-8 shadow-xl backdrop-blur-sm">

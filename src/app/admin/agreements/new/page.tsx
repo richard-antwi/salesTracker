@@ -24,16 +24,11 @@ export default function NewAgreementPage() {
   const [hirerPassword, setHirerPassword] = useState('');
 
   // Guarantors
-  const [guarantor1Name, setGuarantor1Name] = useState('');
-  const [guarantor1Phone, setGuarantor1Phone] = useState('');
-  const [guarantor2Name, setGuarantor2Name] = useState('');
-  const [guarantor2Phone, setGuarantor2Phone] = useState('');
+  const [guarantors, setGuarantors] = useState([{ name: '', phone: '', touched: false }]);
 
   // Phone Touched / Validation States
   const [ownerPhoneTouched, setOwnerPhoneTouched] = useState(false);
   const [hirerPhoneTouched, setHirerPhoneTouched] = useState(false);
-  const [guarantor1PhoneTouched, setGuarantor1PhoneTouched] = useState(false);
-  const [guarantor2PhoneTouched, setGuarantor2PhoneTouched] = useState(false);
 
   // Vehicle
   const [makeModel, setMakeModel] = useState('Bajaj Boxer BM 150');
@@ -94,8 +89,6 @@ export default function NewAgreementPage() {
   // Validation helpers
   const ownerPhoneError = ownerPhoneTouched && !isValidGhanaPhone(ownerPhone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
   const hirerPhoneError = hirerPhoneTouched && !isValidGhanaPhone(hirerPhone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
-  const guarantor1PhoneError = guarantor1PhoneTouched && guarantor1Phone.trim().length > 0 && !isValidGhanaPhone(guarantor1Phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
-  const guarantor2PhoneError = guarantor2PhoneTouched && guarantor2Phone.trim().length > 0 && !isValidGhanaPhone(guarantor2Phone) ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,8 +97,7 @@ export default function NewAgreementPage() {
     // Mark all phone fields as touched to trigger inline error displays if invalid
     setOwnerPhoneTouched(true);
     setHirerPhoneTouched(true);
-    setGuarantor1PhoneTouched(true);
-    setGuarantor2PhoneTouched(true);
+    setGuarantors(guarantors.map(g => ({ ...g, touched: true })));
 
     if (!isValidGhanaPhone(ownerPhone)) {
       setError('Owner Phone number is invalid. Enter a 10-digit Ghana number starting with 0 (e.g. 0244123456).');
@@ -117,14 +109,17 @@ export default function NewAgreementPage() {
       return;
     }
 
-    if (guarantor1Phone.trim().length > 0 && !isValidGhanaPhone(guarantor1Phone)) {
-      setError('Guarantor 1 Phone number is invalid. Enter a 10-digit Ghana number starting with 0.');
-      return;
-    }
-
-    if (guarantor2Phone.trim().length > 0 && !isValidGhanaPhone(guarantor2Phone)) {
-      setError('Guarantor 2 Phone number is invalid. Enter a 10-digit Ghana number starting with 0.');
-      return;
+    // Only validate guarantors that have a name or phone entered
+    const activeGuarantors = guarantors.filter(g => g.name.trim().length > 0 || g.phone.trim().length > 0);
+    for (let i = 0; i < activeGuarantors.length; i++) {
+      if (!isValidGhanaPhone(activeGuarantors[i].phone)) {
+        setError(`Guarantor ${i + 1} phone number is invalid. Enter a 10-digit Ghana number starting with 0.`);
+        return;
+      }
+      if (!activeGuarantors[i].name.trim()) {
+        setError(`Guarantor ${i + 1} name is missing. Please provide a name.`);
+        return;
+      }
     }
 
     setLoading(true);
@@ -140,10 +135,7 @@ export default function NewAgreementPage() {
           hirerPhone,
           hirerEmail,
           hirerPassword: hirerPassword || undefined,
-          guarantor1Name,
-          guarantor1Phone,
-          guarantor2Name,
-          guarantor2Phone,
+          guarantors: activeGuarantors,
           makeModel,
           registrationNo,
           chassisNo,
@@ -354,67 +346,72 @@ export default function NewAgreementPage() {
                 <User className="w-4 h-4 text-amber-600" />
                 <span>3. Guarantors (Optional)</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor 1 Name</label>
-                  <input
-                    type="text"
-                    value={guarantor1Name}
-                    onChange={(e) => setGuarantor1Name(e.target.value)}
-                    placeholder="e.g. Joseph Kwarteng"
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor 1 Phone</label>
-                  <input
-                    type="text"
-                    value={guarantor1Phone}
-                    onChange={(e) => {
-                      setGuarantor1Phone(e.target.value);
-                      if (!guarantor1PhoneTouched) setGuarantor1PhoneTouched(true);
-                    }}
-                    onBlur={() => setGuarantor1PhoneTouched(true)}
-                    placeholder="e.g. 0208889900"
-                    className={`input-field ${guarantor1PhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
-                  />
-                  {guarantor1PhoneError && (
-                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      {guarantor1PhoneError}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor 2 Name</label>
-                  <input
-                    type="text"
-                    value={guarantor2Name}
-                    onChange={(e) => setGuarantor2Name(e.target.value)}
-                    placeholder="e.g. Abena Serwaa"
-                    className="input-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor 2 Phone</label>
-                  <input
-                    type="text"
-                    value={guarantor2Phone}
-                    onChange={(e) => {
-                      setGuarantor2Phone(e.target.value);
-                      if (!guarantor2PhoneTouched) setGuarantor2PhoneTouched(true);
-                    }}
-                    onBlur={() => setGuarantor2PhoneTouched(true)}
-                    placeholder="e.g. 0554443322"
-                    className={`input-field ${guarantor2PhoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
-                  />
-                  {guarantor2PhoneError && (
-                    <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3 shrink-0" />
-                      {guarantor2PhoneError}
-                    </p>
-                  )}
-                </div>
+              <div className="space-y-4">
+                {guarantors.map((guarantor, index) => {
+                  const phoneError = guarantor.touched && guarantor.phone.trim().length > 0 && !isValidGhanaPhone(guarantor.phone)
+                    ? 'Enter a valid Ghana phone number (10 digits, starting with 0)' : '';
+                  return (
+                    <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4 border border-slate-100 p-4 rounded-xl bg-slate-50/50 relative">
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setGuarantors(guarantors.filter((_, i) => i !== index))}
+                          className="absolute -top-2 -right-2 bg-rose-100 text-rose-600 rounded-full p-1 hover:bg-rose-200 transition-colors"
+                          title="Remove Guarantor"
+                        >
+                          <AlertCircle className="w-4 h-4" />
+                        </button>
+                      )}
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor {index + 1} Name</label>
+                        <input
+                          type="text"
+                          value={guarantor.name}
+                          onChange={(e) => {
+                            const newG = [...guarantors];
+                            newG[index].name = e.target.value;
+                            setGuarantors(newG);
+                          }}
+                          placeholder="e.g. Joseph Kwarteng"
+                          className="input-field"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">Guarantor {index + 1} Phone</label>
+                        <input
+                          type="text"
+                          value={guarantor.phone}
+                          onChange={(e) => {
+                            const newG = [...guarantors];
+                            newG[index].phone = e.target.value;
+                            if (!newG[index].touched) newG[index].touched = true;
+                            setGuarantors(newG);
+                          }}
+                          onBlur={() => {
+                            const newG = [...guarantors];
+                            newG[index].touched = true;
+                            setGuarantors(newG);
+                          }}
+                          placeholder="e.g. 0208889900"
+                          className={`input-field ${phoneError ? 'border-rose-400 focus:ring-rose-500 bg-rose-50/30' : ''}`}
+                        />
+                        {phoneError && (
+                          <p className="text-[11px] font-semibold text-rose-600 mt-1 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            {phoneError}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                <button
+                  type="button"
+                  onClick={() => setGuarantors([...guarantors, { name: '', phone: '', touched: false }])}
+                  className="text-xs font-semibold text-emerald-600 hover:text-emerald-700 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
+                >
+                  + Add Another Guarantor
+                </button>
               </div>
             </div>
 

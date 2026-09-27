@@ -105,8 +105,10 @@ async function seed(url) {
     await prisma.payment.createMany({ data: payments });
 
     // Create Completed Agreement (for dummy past rider)
-    const pastRider = await prisma.user.create({
-      data: {
+    const pastRider = await prisma.user.upsert({
+      where: { phone: '0540000009' },
+      update: {},
+      create: {
         organizationId: org.id,
         name: 'Demo Completed Rider',
         phone: '0540000009',

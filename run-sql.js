@@ -8,7 +8,30 @@ async function runFor(url) {
     await client.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "resetTokenExpiry" TIMESTAMP(3);`);
     await client.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "twoFactorCode" TEXT;`);
     await client.query(`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "twoFactorExpiresAt" TIMESTAMP(3);`);
-    console.log('Successfully altered User table for URL:', url.substring(0, 30) + '...');
+    
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "Guarantor" (
+        "id" TEXT NOT NULL,
+        "agreementId" TEXT NOT NULL,
+        "name" TEXT NOT NULL,
+        "phone" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Guarantor_pkey" PRIMARY KEY ("id")
+      );
+    `);
+    
+    // Add foreign key only if it doesn't exist (can fail if already exists, so wrap in try-catch inside the query or just catch the specific error)
+    try {
+      await client.query(`
+        ALTER TABLE "Guarantor" ADD CONSTRAINT "Guarantor_agreementId_fkey" FOREIGN KEY ("agreementId") REFERENCES "Agreement"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      `);
+    } catch (e) {
+      if (e.code !== '42710') { // 42710 is duplicate_object
+        console.error('Error adding foreign key:', e);
+      }
+    }
+
+    console.log('Successfully applied updates for URL:', url.substring(0, 30) + '...');
   } catch(e) {
     console.log(e);
   }
