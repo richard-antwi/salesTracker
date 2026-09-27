@@ -39,34 +39,11 @@ export async function POST(request: Request) {
       data: { resetToken, resetTokenExpiry },
     });
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-    });
-
     const reqUrl = new URL(request.url);
     const resetLink = `${reqUrl.protocol}//${reqUrl.host}/reset-password?token=${resetToken}`;
 
-    await transporter.sendMail({
-      from: `"Work & Pay Ghana" <${process.env.GMAIL_USER}>`,
-      to: user.email,
-      subject: 'Password Reset Request',
-      html: `
-        <div style="font-family: sans-serif; max-w: 600px; margin: 0 auto;">
-          <h2 style="color: #065f46;">Work & Pay Password Reset</h2>
-          <p>Hello ${user.name},</p>
-          <p>We received a request to reset your password. Click the button below to set a new password:</p>
-          <div style="margin: 30px 0;">
-            <a href="${resetLink}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
-          </div>
-          <p>If you did not request this, you can safely ignore this email.</p>
-          <p><em>This link expires in 1 hour.</em></p>
-        </div>
-      `,
-    });
+    const { notifications } = await import('@/lib/notifications');
+    await notifications.sendPasswordReset(user.email, user.name, resetLink);
 
     return NextResponse.json({ success: true, message: 'Password reset email sent' });
   } catch (error: any) {

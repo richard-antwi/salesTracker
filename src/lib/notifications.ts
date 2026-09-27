@@ -155,10 +155,16 @@ export class NotificationService {
   private smsProvider: SmsProvider;
 
   constructor(
-    emailProvider: EmailProvider = new GmailSmtpEmailProvider(),
+    emailProvider?: EmailProvider,
     smsProvider: SmsProvider = new AfricasTalkingSmsProvider()
   ) {
-    this.emailProvider = emailProvider;
+    if (emailProvider) {
+      this.emailProvider = emailProvider;
+    } else {
+      this.emailProvider = CONFIG.EMAIL_PROVIDER === 'RESEND' 
+        ? new ResendEmailProvider() 
+        : new GmailSmtpEmailProvider();
+    }
     this.smsProvider = smsProvider;
   }
 
@@ -498,6 +504,30 @@ export class NotificationService {
     await this.emailProvider.send({
       to: toEmail,
       subject: `Your Login Verification Code: ${token} - Work & Pay`,
+      html: htmlMsg,
+      text: textMsg,
+    });
+  }
+
+  // Trigger 10: Password Reset
+  async sendPasswordReset(email: string, name: string, resetLink: string) {
+    const textMsg = `Hello ${name}, reset your Work & Pay password here: ${resetLink} (Expires in 1 hour)`;
+    const htmlMsg = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
+        <h2 style="color: #065f46; margin-top: 0;">Work & Pay Password Reset</h2>
+        <p>Hello <strong>${name}</strong>,</p>
+        <p>We received a request to reset your password. Click the button below to set a new password:</p>
+        <div style="margin: 30px 0; text-align: center;">
+          <a href="${resetLink}" style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Reset Password</a>
+        </div>
+        <p>If you did not request this, you can safely ignore this email.</p>
+        <p style="color: #b91c1c; font-size: 13px;"><em>This link expires in 1 hour.</em></p>
+      </div>
+    `;
+
+    await this.emailProvider.send({
+      to: email,
+      subject: 'Password Reset Request - Work & Pay',
       html: htmlMsg,
       text: textMsg,
     });

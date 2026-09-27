@@ -7,6 +7,9 @@ export const CONFIG = {
   DEFAULT_PAYMENT_CHANNEL: 'MOMO' as const,
   PAYMENT_CHANNELS: ['MOMO', 'CASH', 'BANK'] as const,
 
+  // Email Provider Toggle (GMAIL or RESEND)
+  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || 'GMAIL',
+
   // Gmail SMTP Notification Configuration
   // Note: Gmail free tier caps at ~500 emails/day. Sender display shows user's Gmail address.
   GMAIL_USER: process.env.GMAIL_USER || '',
