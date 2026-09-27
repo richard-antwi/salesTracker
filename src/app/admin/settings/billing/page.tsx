@@ -68,7 +68,7 @@ export default function AdminBillingPage() {
         }
       }
 
-      fetch('/api/admin/billing/status')
+      fetch('/api/admin/billing/status', { cache: 'no-store' })
       .then(res => res.json())
       .then(data => {
         if (data.error) setError(data.error);
