@@ -46,6 +46,7 @@ model Organization {
   subscriptionPayments SubscriptionPayment[]
   statusLogs   StatusChangeLog[]
   documents    Document[]
+  withdrawalRequests WithdrawalRequest[]
 }
 
 model User {
@@ -229,3 +230,20 @@ model SubscriptionPayment {
   createdAt      DateTime     @default(now())
 }
 
+model WithdrawalRequest {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  amount         Decimal      @db.Decimal(12, 2)
+  status         WithdrawalStatus @default(PENDING)
+  requestedBy    String
+  note           String?
+  resolvedAt     DateTime?
+  createdAt      DateTime     @default(now())
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

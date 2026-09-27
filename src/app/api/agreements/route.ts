@@ -56,7 +56,40 @@ export async function GET() {
 
     const isDemo = session.phone === '0550000000';
 
-    return NextResponse.json({ agreements: agreementsWithSummary, isDemo });
+    let finances = null;
+    if (session.role === 'ADMIN' && session.organizationId) {
+      // Calculate total digital payments (MOMO, BANK)
+      const digitalPayments = await prisma.payment.aggregate({
+        where: {
+          organizationId: session.organizationId,
+          voided: false,
+          channel: { in: ['MOMO', 'BANK'] }
+        },
+        _sum: { amount: true }
+      });
+
+      const totalDigitalCollected = Number(digitalPayments._sum.amount || 0);
+
+      // Calculate withdrawals
+      const withdrawals = await prisma.withdrawalRequest.aggregate({
+        where: {
+          organizationId: session.organizationId,
+          status: { in: ['APPROVED', 'PENDING'] }
+        },
+        _sum: { amount: true }
+      });
+
+      const totalWithdrawn = Number(withdrawals._sum.amount || 0);
+      const totalAmountWithUs = Math.max(0, totalDigitalCollected - totalWithdrawn);
+
+      finances = {
+        totalDigitalCollected,
+        totalWithdrawn,
+        totalAmountWithUs
+      };
+    }
+
+    return NextResponse.json({ agreements: agreementsWithSummary, isDemo, finances });
   } catch (error) {
     console.error('Error fetching agreements:', error);
     return NextResponse.json({ error: 'Failed to fetch agreements' }, { status: 500 });

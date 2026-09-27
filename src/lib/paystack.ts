@@ -4,6 +4,7 @@ interface PaystackInitializeParams {
   amount: number; // in GHS, will be converted to pesewas
   email: string;
   reference: string;
+  metadata?: any;
 }
 
 export class PaystackService {
@@ -43,6 +44,7 @@ export class PaystackService {
           reference: params.reference,
           currency: CONFIG.CURRENCY_CODE,
           callback_url: `${CONFIG.APP_URL}/rider`,
+          metadata: params.metadata,
         }),
       });
 

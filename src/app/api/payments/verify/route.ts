@@ -89,14 +89,20 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'Agreement not found' }, { status: 404 });
       }
 
+      // Extract principal amount (without the 2% fee)
+      const totalAmountPaid = amountPaidGHS;
+      const principalAmount = verifyResponse.data.metadata?.principalAmount 
+        ? Number(verifyResponse.data.metadata.principalAmount)
+        : totalAmountPaid / 1.02; // Fallback if metadata is missing
+
       // Record Payment
       const payment = await prisma.payment.create({
         data: {
-          amount: amountPaidGHS,
+          amount: principalAmount,
           datePaid: new Date(),
           channel: 'MOMO',
           reference: reference,
-          note: 'Auto-reconciled via Paystack Verification API',
+          note: `Auto-reconciled (Paid GH₵${totalAmountPaid.toFixed(2)} total inc. 2% fee)`,
           recordedBy: 'SYSTEM',
           agreementId: agreement.id,
           organizationId: agreement.organizationId,

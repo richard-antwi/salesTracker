@@ -57,6 +57,10 @@ export default function AdminDashboardPage() {
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'OVERDUE' | 'DEFAULTED' | 'REPOSSESSED' | 'COMPLETED'>('ALL');
   const [sortBy, setSortBy] = useState<'balance-desc' | 'balance-asc' | 'progress-desc' | 'progress-asc' | 'date-asc'>('balance-desc');
   const [isDemo, setIsDemo] = useState(false);
+  const [finances, setFinances] = useState<{ totalDigitalCollected: number; totalWithdrawn: number; totalAmountWithUs: number } | null>(null);
+  const [requestingWithdrawal, setRequestingWithdrawal] = useState(false);
+  const [withdrawalAmount, setWithdrawalAmount] = useState('');
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
 
   useEffect(() => {
     async function fetchAgreements() {
@@ -66,6 +70,7 @@ export default function AdminDashboardPage() {
         if (res.ok && data.agreements) {
           setAgreements(data.agreements);
           setIsDemo(data.isDemo || false);
+          if (data.finances) setFinances(data.finances);
         }
       } catch (err) {
         console.error('Failed to load agreements:', err);
@@ -75,6 +80,37 @@ export default function AdminDashboardPage() {
     }
     fetchAgreements();
   }, []);
+
+  async function handleWithdrawal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!finances || Number(withdrawalAmount) > finances.totalAmountWithUs) {
+      alert("Invalid amount or insufficient balance.");
+      return;
+    }
+    setRequestingWithdrawal(true);
+    try {
+      const res = await fetch('/api/admin/withdrawals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: Number(withdrawalAmount) })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      alert("Withdrawal request submitted successfully!");
+      setShowWithdrawModal(false);
+      setWithdrawalAmount('');
+      // Optimistically update balance
+      setFinances({
+        ...finances,
+        totalWithdrawn: finances.totalWithdrawn + Number(withdrawalAmount),
+        totalAmountWithUs: finances.totalAmountWithUs - Number(withdrawalAmount)
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit withdrawal request');
+    } finally {
+      setRequestingWithdrawal(false);
+    }
+  }
 
   // Compute portfolio metrics
   const totalAgreements = agreements.length;
@@ -215,6 +251,33 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Financial Overview (Admin Only) */}
+      {finances && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-1">
+              Escrow Balance (Digital Payments)
+            </span>
+            <div className="flex items-baseline gap-3">
+              <span className="text-3xl font-black text-white">
+                GH₵ {finances.totalAmountWithUs.toFixed(2)}
+              </span>
+              <span className="text-xs text-slate-400 font-medium">
+                (Total Collected: GH₵ {finances.totalDigitalCollected.toFixed(2)})
+              </span>
+            </div>
+          </div>
+          <div>
+            <button
+              onClick={() => setShowWithdrawModal(true)}
+              className="w-full sm:w-auto px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-900 font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-2"
+            >
+              <CreditCard className="w-4 h-4" /> Request Withdrawal
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Portfolio Summary Metric Cards */}
       <div id="tour-metrics" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -509,6 +572,50 @@ export default function AdminDashboardPage() {
           </>
         )}
       </div>
+
+      {/* Withdrawal Modal */}
+      {showWithdrawModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl space-y-5 border border-slate-200">
+            <h3 className="font-black text-slate-900 text-lg border-b border-slate-100 pb-3">Request Withdrawal</h3>
+            <form onSubmit={handleWithdrawal} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Amount to Withdraw (GHS)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 font-bold text-slate-400">₵</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    max={finances?.totalAmountWithUs}
+                    required
+                    value={withdrawalAmount}
+                    onChange={(e) => setWithdrawalAmount(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl text-lg font-black pl-8 pr-3 py-2 focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+                  />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">Available balance: GH₵ {finances?.totalAmountWithUs.toFixed(2)}</p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWithdrawModal(false)}
+                  className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs py-3 rounded-xl transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={requestingWithdrawal}
+                  className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-900 font-extrabold text-xs py-3 rounded-xl transition-colors shadow-md disabled:opacity-50"
+                >
+                  {requestingWithdrawal ? 'Submitting...' : 'Confirm Request'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -43,11 +43,24 @@ export async function POST(
     // Generate a unique reference for this transaction attempt
     const reference = `PAY_${agreement.id}_${Date.now()}`;
 
+    const principalAmount = Number(amount);
+    // Paystack charges 1.95% for local payments. 
+    // If the rider wants to pay 500, they must be charged 500 / (1 - 0.0195) to leave exactly 500,
+    // OR we just add 1.95% on top: 500 * 1.0195.
+    // The user requested: "if the rider want to pay 500 he is charge 510 from the momo" -> this is exactly adding 2% on top.
+    const paystackFee = principalAmount * 0.02;
+    const totalAmount = principalAmount + paystackFee;
+
     // Call Paystack
     const result = await paystackService.initializeTransaction({
-      amount: Number(amount),
+      amount: totalAmount,
       email: agreement.hirer.email || 'payer@workandpay.gh',
       reference,
+      metadata: {
+        principalAmount: principalAmount,
+        paystackFee: paystackFee,
+        type: 'INSTALLMENT_PAYMENT'
+      }
     });
 
     if (!result.success || !result.authorizationUrl) {

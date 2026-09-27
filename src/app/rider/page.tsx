@@ -545,6 +545,22 @@ export default function RiderMyAgreementPage() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl text-lg font-black pl-8 pr-3 py-2 focus:ring-2 focus:ring-[#09A5DB] outline-none transition-all"
                   />
                 </div>
+                {payAmount && !isNaN(Number(payAmount)) && Number(payAmount) > 0 && (
+                  <div className="mt-2 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs">
+                    <div className="flex justify-between text-slate-500 mb-1">
+                      <span>Principal Amount</span>
+                      <span>GH₵ {Number(payAmount).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-500 mb-1">
+                      <span>Paystack Processing Fee (2%)</span>
+                      <span>GH₵ {(Number(payAmount) * 0.02).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-800 border-t border-slate-200 pt-1 mt-1">
+                      <span>Total Amount to Pay</span>
+                      <span>GH₵ {(Number(payAmount) * 1.02).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {payFeedback && (

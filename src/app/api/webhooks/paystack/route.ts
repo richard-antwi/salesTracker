@@ -106,14 +106,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true });
     }
 
+    // Extract principal amount (without the 2% fee)
+    const totalAmountPaid = paymentAmount;
+    const principalAmount = metadata?.principalAmount 
+      ? Number(metadata.principalAmount)
+      : totalAmountPaid / 1.02; // Fallback if metadata is missing
+
     // 3. Record the payment
     const payment = await prisma.payment.create({
       data: {
-        amount: paymentAmount,
+        amount: principalAmount,
         datePaid: new Date(),
         channel: 'MOMO', // Paystack handles MoMo/Card, we just label it digital/MOMO
         reference: reference,
-        note: 'Auto-reconciled via Paystack Gateway',
+        note: `Auto-reconciled (Paid GH₵${totalAmountPaid.toFixed(2)} total inc. 2% fee)`,
         recordedBy: 'SYSTEM',
         agreementId: agreement.id,
         organizationId: agreement.organizationId,
