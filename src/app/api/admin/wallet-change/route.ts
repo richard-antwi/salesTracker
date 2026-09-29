@@ -32,7 +32,7 @@ export async function POST(req: Request) {
           newNetwork: newNetwork.trim(),
           newAccountName: newAccountName.trim(),
           newAccountNumber: newAccountNumber.trim(),
-          requestedBy: session.userName || session.userId,
+          requestedBy: session.name || session.userId,
         },
       });
       return NextResponse.json({ success: true, walletChangeRequest: updated, message: 'Wallet change request updated and awaiting Super Admin approval.' });
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const walletChangeRequest = await prisma.walletChangeRequest.create({
       data: {
         organizationId: session.organizationId,
-        requestedBy: session.userName || session.userId,
+        requestedBy: session.name || session.userId,
         newNetwork: newNetwork.trim(),
         newAccountName: newAccountName.trim(),
         newAccountNumber: newAccountNumber.trim(),
