@@ -22,6 +22,10 @@ export default function Navbar({ user }: NavbarProps) {
     router.refresh();
   }
 
+  if (pathname.startsWith('/super-admin')) {
+    return null;
+  }
+
   if (!user && pathname !== '/') {
     // Hide navbar on login/register pages if not authenticated
     return null;
