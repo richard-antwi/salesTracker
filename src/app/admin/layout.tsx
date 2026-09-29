@@ -11,8 +11,13 @@ export default async function AdminLayout({
 }) {
   const session = await getCurrentSession();
   
-  if (!session || session.role !== 'ADMIN') {
+  if (!session || (session.role !== 'ADMIN' && session.role !== 'SUPER_ADMIN')) {
     redirect('/login');
+  }
+
+  // Super Admin has global platform access across all fleet organizations
+  if (session.role === 'SUPER_ADMIN') {
+    return <div className="min-h-screen flex flex-col relative">{children}</div>;
   }
 
   if (!session.organizationId) {
