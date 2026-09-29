@@ -34,6 +34,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Download,
+  Edit,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
 
@@ -73,6 +74,27 @@ export default function EnterpriseSuperAdminDashboard() {
     settings: { monthlySubscriptionFee: number };
   } | null>(null);
 
+  // Super Admin Agreement Inspection Modal State
+  const [inspectingAgreement, setInspectingAgreement] = useState<any | null>(null);
+
+  // Edit Agreement Modal State (Super Admin Native)
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const [editCashPrice, setEditCashPrice] = useState('');
+  const [editHpPrice, setEditHpPrice] = useState('');
+  const [editInstallment, setEditInstallment] = useState('');
+  const [editFrequency, setEditFrequency] = useState<'WEEKLY' | 'MONTHLY'>('WEEKLY');
+  const [editTotalInstallments, setEditTotalInstallments] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editMakeModel, setEditMakeModel] = useState('');
+  const [editRegNo, setEditRegNo] = useState('');
+  const [editHirerName, setEditHirerName] = useState('');
+  const [editHirerPhone, setEditHirerPhone] = useState('');
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editOwnerPhone, setEditOwnerPhone] = useState('');
+
   // User Password Reset Modal State
   const [selectedUser, setSelectedUser] = useState<any | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -87,6 +109,12 @@ export default function EnterpriseSuperAdminDashboard() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to load enterprise data');
       setData(json);
+
+      // Keep inspectingAgreement updated if opened
+      if (inspectingAgreement) {
+        const updated = (json.agreements || []).find((a: any) => a.id === inspectingAgreement.id);
+        if (updated) setInspectingAgreement(updated);
+      }
     } catch (err: any) {
       console.error('Failed to load super admin data:', err);
       setError(err.message || 'Server error loading enterprise data');
@@ -98,6 +126,66 @@ export default function EnterpriseSuperAdminDashboard() {
   useEffect(() => {
     fetchGlobalData();
   }, []);
+
+  function openEditModal(ag: any) {
+    setEditCashPrice(String(ag.cashPrice));
+    setEditHpPrice(String(ag.hirePurchasePrice));
+    setEditInstallment(String(ag.installmentAmount));
+    setEditFrequency(ag.frequency);
+    setEditTotalInstallments(String(ag.totalInstallments));
+    setEditStartDate(new Date(ag.startDate).toISOString().split('T')[0]);
+
+    setEditMakeModel(ag.vehicle?.makeModel || '');
+    setEditRegNo(ag.vehicle?.registrationNo || '');
+
+    setEditHirerName(ag.hirer?.name || '');
+    setEditHirerPhone(ag.hirer?.phone || '');
+
+    setEditOwnerName(ag.ownerName || '');
+    setEditOwnerPhone(ag.ownerPhone || '');
+
+    setEditError('');
+    setShowEditModal(true);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!inspectingAgreement) return;
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const res = await fetch(`/api/agreements/${inspectingAgreement.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerName: editOwnerName,
+          ownerPhone: editOwnerPhone,
+          cashPrice: editCashPrice,
+          hirePurchasePrice: editHpPrice,
+          installmentAmount: editInstallment,
+          frequency: editFrequency,
+          totalInstallments: editTotalInstallments,
+          startDate: editStartDate,
+          vehicle: {
+            makeModel: editMakeModel,
+            registrationNo: editRegNo,
+          },
+          hirer: {
+            name: editHirerName,
+            phone: editHirerPhone,
+          },
+        }),
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Failed to update agreement');
+      await fetchGlobalData();
+      setShowEditModal(false);
+    } catch (err: any) {
+      setEditError(err.message || 'Error saving changes');
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   // Handler: Organization Access Status Change
   async function handleOrgStatus(orgId: string, status: string) {
@@ -129,25 +217,6 @@ export default function EnterpriseSuperAdminDashboard() {
         body: JSON.stringify({ id, status }),
       });
       if (!res.ok) throw new Error('Failed to update withdrawal status');
-      await fetchGlobalData();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setUpdatingId(null);
-    }
-  }
-
-  // Handler: Wallet Change Status Update
-  async function handleWalletChangeStatus(id: string, action: 'APPROVED' | 'REJECTED') {
-    if (!confirm(`Are you sure you want to ${action.toLowerCase()} this payout wallet change request?`)) return;
-    setUpdatingId(id);
-    try {
-      const res = await fetch('/api/super-admin/wallet-changes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action }),
-      });
-      if (!res.ok) throw new Error('Failed to update wallet request');
       await fetchGlobalData();
     } catch (err: any) {
       alert(err.message);
@@ -622,7 +691,7 @@ export default function EnterpriseSuperAdminDashboard() {
                     <th className="p-3.5">Terms & Price</th>
                     <th className="p-3.5">Progress & Balance</th>
                     <th className="p-3.5">Status</th>
-                    <th className="p-3.5 text-right">Inspect</th>
+                    <th className="p-3.5 text-right">Super Admin Control</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/60 font-medium">
@@ -669,12 +738,13 @@ export default function EnterpriseSuperAdminDashboard() {
                         </span>
                       </td>
                       <td className="p-3.5 text-right">
-                        <Link
-                          href={`/admin/agreements/${ag.id}`}
-                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                        <button
+                          onClick={() => setInspectingAgreement(ag)}
+                          className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-slate-700 hover:border-emerald-500/40 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm"
                         >
-                          <Eye className="w-3.5 h-3.5" /> Inspect
-                        </Link>
+                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Inspect Contract</span>
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -911,6 +981,364 @@ export default function EnterpriseSuperAdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* NATIVE SUPER ADMIN CONTRACT INSPECTOR MODAL */}
+      {inspectingAgreement && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-4xl w-full p-6 shadow-2xl space-y-6 my-8 text-slate-100">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-2xl">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2 py-0.5 rounded-md">
+                      Super Admin Inspector
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border ${
+                        inspectingAgreement.summary?.statusBadge?.variant === 'success'
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : inspectingAgreement.summary?.statusBadge?.variant === 'danger'
+                          ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                          : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                      }`}
+                    >
+                      {inspectingAgreement.summary?.statusBadge?.label || inspectingAgreement.status}
+                    </span>
+                  </div>
+                  <h2 className="text-lg font-black text-white mt-1">
+                    {inspectingAgreement.hirer?.name} &bull; <span className="text-emerald-400 font-mono">{inspectingAgreement.vehicle?.registrationNo}</span>
+                  </h2>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setInspectingAgreement(null)}
+                className="p-2 text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Metric Overview Bar */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-950/80 p-4 rounded-2xl border border-slate-800">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Total Price</span>
+                <p className="text-base font-black text-white">{formatCedi(inspectingAgreement.hirePurchasePrice)}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Total Paid</span>
+                <p className="text-base font-black text-teal-400">{formatCedi(inspectingAgreement.summary?.totalPaid)}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Remaining Balance</span>
+                <p className="text-base font-black text-amber-400">{formatCedi(inspectingAgreement.summary?.balanceRemaining)}</p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Paid %</span>
+                <p className="text-base font-black text-indigo-400">{Math.round(inspectingAgreement.summary?.percentComplete || 0)}%</p>
+              </div>
+            </div>
+
+            {/* Inspector Grid: 2 Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Financial & Owner Terms */}
+              <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> Financial & Owner Terms
+                </h4>
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Fleet Owner:</span>
+                    <span className="font-bold text-white">{inspectingAgreement.ownerName} ({inspectingAgreement.ownerPhone})</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Organization:</span>
+                    <span className="font-semibold text-slate-200">{inspectingAgreement.organization?.name}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Cash Price:</span>
+                    <span className="font-semibold text-white">{formatCedi(inspectingAgreement.cashPrice)}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Installments:</span>
+                    <span className="font-semibold text-white">{formatCedi(inspectingAgreement.installmentAmount)} / {inspectingAgreement.frequency.toLowerCase()}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Total Installments:</span>
+                    <span className="font-semibold text-white">{inspectingAgreement.totalInstallments}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Start Date:</span>
+                    <span className="font-semibold text-white">{new Date(inspectingAgreement.startDate).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Motor Vehicle & Hirer Info */}
+              <div className="bg-slate-950/50 p-4 rounded-2xl border border-slate-800 space-y-3">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Bike className="w-3.5 h-3.5" /> Motor Vehicle & Hirer Info
+                </h4>
+                <div className="space-y-1.5 text-xs text-slate-300">
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Vehicle Plate:</span>
+                    <span className="font-bold text-emerald-400 font-mono">{inspectingAgreement.vehicle?.registrationNo}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Make & Model:</span>
+                    <span className="font-semibold text-white">{inspectingAgreement.vehicle?.makeModel}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Hirer (Rider):</span>
+                    <span className="font-bold text-white">{inspectingAgreement.hirer?.name}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Rider Phone:</span>
+                    <span className="font-semibold text-white">{inspectingAgreement.hirer?.phone}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-slate-800/80 pb-1">
+                    <span className="text-slate-400">Guarantor 1:</span>
+                    <span className="font-semibold text-slate-300">{inspectingAgreement.guarantor1Name || 'None'} ({inspectingAgreement.guarantor1Phone || 'N/A'})</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Ledger History inside Inspector */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Payment Ledger History</h4>
+              <div className="bg-slate-950/80 border border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-900 text-slate-400 uppercase text-[10px] font-bold sticky top-0">
+                    <tr>
+                      <th className="p-2.5">Date</th>
+                      <th className="p-2.5">Amount</th>
+                      <th className="p-2.5">Channel</th>
+                      <th className="p-2.5">Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {(inspectingAgreement.payments || []).map((p: any) => (
+                      <tr key={p.id} className={p.voided ? 'line-through opacity-50 bg-rose-950/20' : ''}>
+                        <td className="p-2.5 text-slate-400">{new Date(p.datePaid).toLocaleDateString()}</td>
+                        <td className="p-2.5 font-bold text-white">{formatCedi(p.amount)}</td>
+                        <td className="p-2.5 font-bold text-emerald-400">{p.channel}</td>
+                        <td className="p-2.5 text-slate-400 font-mono">{p.reference || p.note || 'N/A'}</td>
+                      </tr>
+                    ))}
+                    {(!inspectingAgreement.payments || inspectingAgreement.payments.length === 0) && (
+                      <tr>
+                        <td colSpan={4} className="p-3 text-center text-slate-500 italic">No payments recorded yet.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Super Admin Action Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-4">
+              <button
+                onClick={() => openEditModal(inspectingAgreement)}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit Contract Details</span>
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <a
+                  href={`/api/agreements/${inspectingAgreement.id}/pdf`}
+                  download
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5 text-emerald-400" /> PDF Statement
+                </a>
+                <a
+                  href={`/api/agreements/${inspectingAgreement.id}/export-csv`}
+                  download
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold inline-flex items-center gap-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-400" /> Export CSV
+                </a>
+                <button
+                  onClick={() => setInspectingAgreement(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors"
+                >
+                  Close Inspector
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPER ADMIN NATIVE EDIT AGREEMENT MODAL */}
+      {showEditModal && inspectingAgreement && (
+        <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-4 my-8 text-slate-100">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Edit className="w-5 h-5 text-emerald-400" /> Super Admin Edit Contract Terms
+              </h3>
+              <button onClick={() => setShowEditModal(false)} className="text-slate-400 hover:text-white">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              <div className="bg-slate-950 p-4 rounded-2xl space-y-3 border border-slate-800">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Financial Terms</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Cash Price (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editCashPrice}
+                      onChange={(e) => setEditCashPrice(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Hire-Purchase Price (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editHpPrice}
+                      onChange={(e) => setEditHpPrice(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Installment Amount (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editInstallment}
+                      onChange={(e) => setEditInstallment(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Frequency</label>
+                    <select
+                      value={editFrequency}
+                      onChange={(e) => setEditFrequency(e.target.value as 'WEEKLY' | 'MONTHLY')}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    >
+                      <option value="WEEKLY">WEEKLY</option>
+                      <option value="MONTHLY">MONTHLY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Total Installments</label>
+                    <input
+                      type="number"
+                      required
+                      value={editTotalInstallments}
+                      onChange={(e) => setEditTotalInstallments(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Start Date</label>
+                    <input
+                      type="date"
+                      required
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 font-medium outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-2xl space-y-3 border border-slate-800">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Vehicle Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Make / Model</label>
+                    <input
+                      type="text"
+                      required
+                      value={editMakeModel}
+                      onChange={(e) => setEditMakeModel(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Registration No</label>
+                    <input
+                      type="text"
+                      required
+                      value={editRegNo}
+                      onChange={(e) => setEditRegNo(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-2xl space-y-3 border border-slate-800">
+                <h4 className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Hirer & Owner Info</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Hirer (Rider) Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editHirerName}
+                      onChange={(e) => setEditHirerName(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-400 mb-1">Hirer Phone</label>
+                    <input
+                      type="text"
+                      required
+                      value={editHirerPhone}
+                      onChange={(e) => setEditHirerPhone(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl text-xs p-2.5 text-white focus:ring-2 focus:ring-emerald-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {editError && (
+                <p className="text-xs p-2.5 rounded-lg border font-semibold text-rose-400 bg-rose-500/10 border-rose-500/20">
+                  {editError}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-800 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-xl shadow-md transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Contract Terms'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Reset User Password Modal */}
       {selectedUser && (
