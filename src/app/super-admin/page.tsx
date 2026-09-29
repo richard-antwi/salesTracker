@@ -38,7 +38,7 @@ import {
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
 
-type ActiveTab = 'orgs' | 'agreements' | 'vehicles' | 'payments' | 'withdrawals' | 'users' | 'billing';
+type ActiveTab = 'orgs' | 'agreements' | 'vehicles' | 'payments' | 'withdrawals' | 'users' | 'wallets' | 'billing';
 
 export default function EnterpriseSuperAdminDashboard() {
   const router = useRouter();
@@ -573,6 +573,18 @@ export default function EnterpriseSuperAdminDashboard() {
               <Users className="w-4 h-4" />
               <span>Users ({data?.users.length || 0})</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('wallets')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
+                activeTab === 'wallets'
+                  ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              <span>Admin Wallets ({data?.organizations.length || 0})</span>
+            </button>
           </div>
 
           {/* Interactive Instant Search Filter */}
@@ -1077,6 +1089,66 @@ export default function EnterpriseSuperAdminDashboard() {
                         >
                           <Lock className="w-3 h-3 text-amber-400" /> Reset Password
                         </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 7: All Fleet Admin Verified Payout Wallets Directory */}
+        {activeTab === 'wallets' && (
+          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+              <h2 className="font-bold text-sm text-white flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-400" /> Fleet Owner Verified Payout Wallets Directory
+              </h2>
+              <span className="text-xs text-slate-400 font-medium">Showing {filteredOrgs.length} fleet owner wallets</span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-300">
+                <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
+                  <tr>
+                    <th className="p-3.5">Organization</th>
+                    <th className="p-3.5">Contact Email / Phone</th>
+                    <th className="p-3.5">Verified Payout Network</th>
+                    <th className="p-3.5">Account Name</th>
+                    <th className="p-3.5">Account / Phone Number</th>
+                    <th className="p-3.5">Verification Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-medium">
+                  {filteredOrgs.map((org) => (
+                    <tr key={org.id} className="hover:bg-slate-800/40 transition-colors">
+                      <td className="p-3.5 font-bold text-white text-sm">{org.name}</td>
+                      <td className="p-3.5">
+                        <div className="text-white">{org.contactEmail}</div>
+                        <div className="text-[10px] text-slate-400">{org.contactPhone || 'N/A'}</div>
+                      </td>
+                      <td className="p-3.5 font-bold text-emerald-400">
+                        {org.payoutNetwork ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[10px] font-extrabold uppercase">
+                            {org.payoutNetwork}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 italic">Not Configured</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 font-semibold text-slate-200">{org.payoutAccountName || 'N/A'}</td>
+                      <td className="p-3.5 font-mono text-white text-xs">{org.payoutAccountNumber || 'N/A'}</td>
+                      <td className="p-3.5">
+                        {org.payoutAccountNumber ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            VERIFIED & ACTIVE
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                            NO WALLET REGISTERED
+                          </span>
+                        )}
                       </td>
                     </tr>
                   ))}

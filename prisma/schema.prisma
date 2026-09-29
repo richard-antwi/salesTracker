@@ -53,6 +53,7 @@ model Organization {
   payoutNetwork            String?
   payoutAccountName        String?
   payoutAccountNumber      String?
+  logoUrl                  String?
 
   @@index([status])
 }
@@ -180,6 +181,8 @@ model Payment {
   channel        PaymentChannel @default(MOMO)
   reference      String?
   note           String?
+  payerAccount   String?
+  payeeAccount   String?
   recordedBy     String
   voided         Boolean        @default(false)
   createdAt      DateTime       @default(now())
@@ -271,6 +274,8 @@ model WithdrawalRequest {
   status         WithdrawalStatus @default(PENDING)
   requestedBy    String
   note           String?
+  sourceAccount  String?
+  destinationAccount String?
   resolvedAt     DateTime?
   createdAt      DateTime     @default(now())
 

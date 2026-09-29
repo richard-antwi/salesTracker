@@ -134,6 +134,15 @@ export default function SuperAdminFinancePage() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <a
+              href="/api/super-admin/finance/export-csv"
+              download
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md inline-flex items-center gap-2"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export Audit CSV</span>
+            </a>
+
             <button
               onClick={fetchFinanceData}
               disabled={loading}
@@ -324,8 +333,8 @@ export default function SuperAdminFinancePage() {
                     <th className="p-3.5">Date Paid</th>
                     <th className="p-3.5">Amount</th>
                     <th className="p-3.5">Channel</th>
-                    <th className="p-3.5">Vehicle & Rider</th>
-                    <th className="p-3.5">Organization</th>
+                    <th className="p-3.5">From (Payer Account)</th>
+                    <th className="p-3.5">To (Payee Account)</th>
                     <th className="p-3.5">Audit Reference</th>
                   </tr>
                 </thead>
@@ -338,10 +347,13 @@ export default function SuperAdminFinancePage() {
                         <span className="px-2 py-0.5 bg-slate-800 text-slate-300 rounded font-bold text-[10px]">{p.channel}</span>
                       </td>
                       <td className="p-3.5">
-                        <div className="font-bold text-emerald-400 font-mono">{p.agreement?.vehicle?.registrationNo}</div>
-                        <div className="text-[10px] text-slate-400">{p.agreement?.hirer?.name}</div>
+                        <div className="font-bold text-white">{p.payerAccount || p.agreement?.hirer?.name || 'Rider'}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">{p.agreement?.hirer?.phone || 'MoMo Wallet'}</div>
                       </td>
-                      <td className="p-3.5 text-slate-400">{p.organization?.name}</td>
+                      <td className="p-3.5">
+                        <div className="font-bold text-emerald-400">{p.payeeAccount || p.organization?.name}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Plate: {p.agreement?.vehicle?.registrationNo || 'N/A'}</div>
+                      </td>
                       <td className="p-3.5 font-mono text-[11px] text-slate-400">{p.reference || p.note || 'None'}</td>
                     </tr>
                   ))}
@@ -371,7 +383,8 @@ export default function SuperAdminFinancePage() {
                 <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
                   <tr>
                     <th className="p-3.5">Organization</th>
-                    <th className="p-3.5">Destination Payout Wallet</th>
+                    <th className="p-3.5">From (Source Account)</th>
+                    <th className="p-3.5">To (Destination Wallet Account)</th>
                     <th className="p-3.5">Amount Requested</th>
                     <th className="p-3.5">Date Requested</th>
                     <th className="p-3.5">Status</th>
@@ -381,6 +394,10 @@ export default function SuperAdminFinancePage() {
                   {filteredPayouts.map((w) => (
                     <tr key={w.id} className="hover:bg-slate-800/40 transition-colors">
                       <td className="p-3.5 font-bold text-white">{w.organization?.name}</td>
+                      <td className="p-3.5">
+                        <div className="font-bold text-slate-300">{w.sourceAccount || 'Platform Treasury Account'}</div>
+                        <div className="text-[10px] text-emerald-400 font-mono">Work & Pay Escrow Ledger</div>
+                      </td>
                       <td className="p-3.5">
                         {w.organization?.payoutAccountNumber ? (
                           <div>
