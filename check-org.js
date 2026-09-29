@@ -8,10 +8,10 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const rider = await prisma.user.findUnique({ where: { phone: '0550000001' } });
-  const admin = await prisma.user.findUnique({ where: { phone: '0550000000' } });
-  console.log('Rider Org ID:', rider.organizationId);
-  console.log('Admin Org ID:', admin.organizationId);
-  console.log('Are they the same?', rider.organizationId === admin.organizationId);
+  const users = await prisma.user.findMany({
+    select: { name: true, phone: true, email: true, role: true }
+  });
+  console.log('All Users in Live Database:');
+  console.log(users);
 }
 main();

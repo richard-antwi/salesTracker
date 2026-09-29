@@ -53,6 +53,8 @@ model Organization {
   payoutNetwork            String?
   payoutAccountName        String?
   payoutAccountNumber      String?
+
+  @@index([status])
 }
 
 model User {
@@ -72,6 +74,9 @@ model User {
 
   createdAt          DateTime      @default(now())
   agreementsAsHirer  Agreement[]   @relation("HirerAgreements")
+
+  @@index([organizationId])
+  @@index([role])
 }
 
 model Vehicle {
@@ -86,6 +91,7 @@ model Vehicle {
   agreement      Agreement?
 
   @@unique([registrationNo, organizationId])
+  @@index([organizationId])
 }
 
 model Agreement {
@@ -123,6 +129,10 @@ model Agreement {
   statusLogs        StatusChangeLog[]
   documents         Document[]
   createdAt         DateTime          @default(now())
+
+  @@index([organizationId])
+  @@index([hirerId])
+  @@index([status])
 }
 
 model Guarantor {
@@ -132,6 +142,8 @@ model Guarantor {
   name        String
   phone       String
   createdAt   DateTime  @default(now())
+
+  @@index([agreementId])
 }
 
 model Witness {
@@ -141,6 +153,8 @@ model Witness {
   name        String
   phone       String?
   createdAt   DateTime  @default(now())
+
+  @@index([agreementId])
 }
 
 enum Frequency {
@@ -169,6 +183,11 @@ model Payment {
   recordedBy     String
   voided         Boolean        @default(false)
   createdAt      DateTime       @default(now())
+
+  @@index([organizationId])
+  @@index([agreementId])
+  @@index([datePaid])
+  @@index([voided])
 }
 
 enum PaymentChannel {
@@ -188,6 +207,9 @@ model StatusChangeLog {
   reason         String
   changedBy      String
   createdAt      DateTime        @default(now())
+
+  @@index([organizationId])
+  @@index([agreementId])
 }
 
 model Document {
@@ -204,6 +226,9 @@ model Document {
   uploadedBy     String
   note           String?
   createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([agreementId])
 }
 
 enum DocumentType {
@@ -234,6 +259,8 @@ model SubscriptionPayment {
   reference      String       @unique
   status         String       @default("SUCCESS")
   createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
 }
 
 model WithdrawalRequest {
@@ -246,6 +273,9 @@ model WithdrawalRequest {
   note           String?
   resolvedAt     DateTime?
   createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([status])
 }
 
 enum WithdrawalStatus {
@@ -253,7 +283,6 @@ enum WithdrawalStatus {
   APPROVED
   REJECTED
 }
-
 
 model WalletChangeRequest {
   id               String       @id @default(cuid())
@@ -266,6 +295,9 @@ model WalletChangeRequest {
   status           WalletChangeStatus @default(PENDING)
   createdAt        DateTime     @default(now())
   resolvedAt       DateTime?
+
+  @@index([organizationId])
+  @@index([status])
 }
 
 enum WalletChangeStatus {
