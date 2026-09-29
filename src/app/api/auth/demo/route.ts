@@ -7,27 +7,38 @@ export async function POST() {
     const demoPhone = '0550000000';
     const demoEmail = 'demo@workandpay.gh';
     
-    // Check if demo user exists
-    let demoUser = await prisma.user.findUnique({ where: { email: demoEmail } });
-    
-    if (!demoUser) {
-      // Upsert Organization in case slug exists but user doesn't
-      const org = await prisma.organization.upsert({
-        where: { slug: 'demo-fleet' },
-        update: {},
-        create: {
-          name: 'Demo Fleet Sandbox',
-          slug: 'demo-fleet',
-          status: 'APPROVED',
-          contactEmail: demoEmail,
-          contactPhone: demoPhone,
-          subscriptionStatus: 'TRIAL',
-          trialEndsAt: new Date(new Date().setDate(new Date().getDate() + 14)),
+    const passwordHash = await hashPassword('DEMO');
+
+    // Check if demo user exists by email or phone
+    let demoUser = await prisma.user.findFirst({
+      where: { OR: [{ email: demoEmail }, { phone: demoPhone }] }
+    });
+
+    const org = await prisma.organization.upsert({
+      where: { slug: 'demo-fleet' },
+      update: { status: 'APPROVED' },
+      create: {
+        name: 'Demo Fleet Sandbox',
+        slug: 'demo-fleet',
+        status: 'APPROVED',
+        contactEmail: demoEmail,
+        contactPhone: demoPhone,
+        subscriptionStatus: 'TRIAL',
+        trialEndsAt: new Date(new Date().setDate(new Date().getDate() + 14)),
+      }
+    });
+
+    if (demoUser) {
+      await prisma.user.update({
+        where: { id: demoUser.id },
+        data: {
+          passwordHash,
+          phone: demoPhone,
+          twoFactorCode: null,
+          twoFactorExpiresAt: null,
         }
       });
-      
-      const passwordHash = await hashPassword('DEMO');
-      
+    } else {
       // Create Demo User
       demoUser = await prisma.user.create({
         data: {

@@ -33,7 +33,6 @@ export default function TourGuide({ agreementsCount, isDemo = false }: TourGuide
                 popover: {
                   title: 'Welcome to Work & Pay! 🎉',
                   description: 'This quick tour will show you around your new Fleet Dashboard. We will cover the most important features after signup.',
-                  side: 'center',
                   align: 'center',
                 }
               },

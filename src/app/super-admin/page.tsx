@@ -155,7 +155,7 @@ export default function SuperAdminDashboardPage() {
             <Wallet className="w-3.5 h-3.5" /> Finance
           </Link>
           <button
-            onClick={fetchOrganizations}
+            onClick={fetchData}
             className="px-3 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-colors flex items-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -390,7 +390,7 @@ export default function SuperAdminDashboardPage() {
                   });
                   const data = await res.json();
                   if (!res.ok) throw new Error(data.error || 'Failed to update billing');
-                  await fetchOrganizations();
+                  await fetchData();
                 } catch (err: any) {
                   alert(err.message);
                 } finally {

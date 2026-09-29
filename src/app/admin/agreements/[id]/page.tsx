@@ -26,6 +26,7 @@ import {
   AlertCircle,
   X,
   Mail,
+  Edit,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
 
@@ -78,6 +79,10 @@ interface AgreementDetail {
   totalInstallments: number;
   startDate: string;
   status: 'ACTIVE' | 'COMPLETED' | 'DEFAULTED' | 'REPOSSESSED';
+  enableLateFee?: boolean;
+  lateFeeType?: string;
+  lateFeeAmount?: number;
+  gracePeriodDays?: number;
   hirer: {
     name: string;
     phone: string;
@@ -164,6 +169,114 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
       setNotifyFeedback({ type: 'error', text: err instanceof Error ? err.message : 'Error sending email' });
     } finally {
       setNotifying(false);
+    }
+  }
+
+  // Edit Agreement Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [editError, setEditError] = useState('');
+
+  const [editCashPrice, setEditCashPrice] = useState('');
+  const [editHpPrice, setEditHpPrice] = useState('');
+  const [editInstallment, setEditInstallment] = useState('');
+  const [editFrequency, setEditFrequency] = useState<'WEEKLY' | 'MONTHLY'>('WEEKLY');
+  const [editTotalInstallments, setEditTotalInstallments] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+
+  const [editMakeModel, setEditMakeModel] = useState('');
+  const [editRegNo, setEditRegNo] = useState('');
+  const [editChassisNo, setEditChassisNo] = useState('');
+  const [editEngineNo, setEditEngineNo] = useState('');
+  const [editColorYear, setEditColorYear] = useState('');
+
+  const [editHirerName, setEditHirerName] = useState('');
+  const [editHirerPhone, setEditHirerPhone] = useState('');
+  const [editHirerEmail, setEditHirerEmail] = useState('');
+
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editOwnerPhone, setEditOwnerPhone] = useState('');
+
+  const [editEnableLateFee, setEditEnableLateFee] = useState(false);
+  const [editLateFeeType, setEditLateFeeType] = useState<'FLAT' | 'PERCENTAGE'>('FLAT');
+  const [editLateFeeAmount, setEditLateFeeAmount] = useState('0');
+  const [editGracePeriodDays, setEditGracePeriodDays] = useState('7');
+
+  function openEditModal() {
+    if (!agreement) return;
+    setEditCashPrice(String(agreement.cashPrice));
+    setEditHpPrice(String(agreement.hirePurchasePrice));
+    setEditInstallment(String(agreement.installmentAmount));
+    setEditFrequency(agreement.frequency);
+    setEditTotalInstallments(String(agreement.totalInstallments));
+    setEditStartDate(new Date(agreement.startDate).toISOString().split('T')[0]);
+
+    setEditMakeModel(agreement.vehicle.makeModel || '');
+    setEditRegNo(agreement.vehicle.registrationNo || '');
+    setEditChassisNo(agreement.vehicle.chassisNo || '');
+    setEditEngineNo(agreement.vehicle.engineNo || '');
+    setEditColorYear(agreement.vehicle.colorYear || '');
+
+    setEditHirerName(agreement.hirer.name || '');
+    setEditHirerPhone(agreement.hirer.phone || '');
+    setEditHirerEmail(agreement.hirer.email || '');
+
+    setEditOwnerName(agreement.ownerName || '');
+    setEditOwnerPhone(agreement.ownerPhone || '');
+
+    const summary = agreement.summary;
+    setEditEnableLateFee(Boolean(agreement.enableLateFee || (summary as any)?.enableLateFee));
+    setEditLateFeeType(((agreement.lateFeeType || (summary as any)?.lateFeeType) as any) || 'FLAT');
+    setEditLateFeeAmount(String(agreement.lateFeeAmount ?? (summary as any)?.lateFeeAmount ?? 0));
+    setEditGracePeriodDays(String(agreement.gracePeriodDays ?? (summary as any)?.gracePeriodDays ?? 7));
+
+    setEditError('');
+    setShowEditModal(true);
+  }
+
+  async function handleEditSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingEdit(true);
+    setEditError('');
+    try {
+      const res = await fetch(`/api/agreements/${resolvedParams.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ownerName: editOwnerName,
+          ownerPhone: editOwnerPhone,
+          cashPrice: editCashPrice,
+          hirePurchasePrice: editHpPrice,
+          installmentAmount: editInstallment,
+          frequency: editFrequency,
+          totalInstallments: editTotalInstallments,
+          startDate: editStartDate,
+          enableLateFee: editEnableLateFee,
+          lateFeeType: editLateFeeType,
+          lateFeeAmount: editLateFeeAmount,
+          gracePeriodDays: editGracePeriodDays,
+          vehicle: {
+            makeModel: editMakeModel,
+            registrationNo: editRegNo,
+            chassisNo: editChassisNo,
+            engineNo: editEngineNo,
+            colorYear: editColorYear,
+          },
+          hirer: {
+            name: editHirerName,
+            phone: editHirerPhone,
+            email: editHirerEmail,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update agreement');
+      await fetchAgreement();
+      setShowEditModal(false);
+    } catch (err: any) {
+      setEditError(err.message || 'Error saving changes');
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -372,6 +485,14 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
         </Link>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={openEditModal}
+            className="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+          >
+            <Edit className="w-4 h-4 text-white" />
+            <span>Edit Agreement</span>
+          </button>
+
           <button
             onClick={() => setShowStatusModal(true)}
             className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-3.5 py-2 rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
@@ -927,6 +1048,209 @@ export default function AgreementDetailPage({ params }: { params: Promise<{ id: 
                 >
                   {notifying ? 'Sending...' : 'Send Email'}
                   <Mail className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Edit Agreement Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 border border-slate-200 my-8">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                <Edit className="w-5 h-5 text-emerald-600" /> Edit Agreement Details
+              </h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
+              <div className="bg-slate-50 p-3.5 rounded-xl space-y-3 border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Financial Terms</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Cash Price (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editCashPrice}
+                      onChange={(e) => setEditCashPrice(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Hire-Purchase Price (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editHpPrice}
+                      onChange={(e) => setEditHpPrice(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Installment Amount (GHS)</label>
+                    <input
+                      type="number"
+                      step="any"
+                      required
+                      value={editInstallment}
+                      onChange={(e) => setEditInstallment(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Frequency</label>
+                    <select
+                      value={editFrequency}
+                      onChange={(e) => setEditFrequency(e.target.value as 'WEEKLY' | 'MONTHLY')}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    >
+                      <option value="WEEKLY">WEEKLY</option>
+                      <option value="MONTHLY">MONTHLY</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Total Installments</label>
+                    <input
+                      type="number"
+                      required
+                      value={editTotalInstallments}
+                      onChange={(e) => setEditTotalInstallments(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Agreement Start Date</label>
+                    <input
+                      type="date"
+                      required
+                      value={editStartDate}
+                      onChange={(e) => setEditStartDate(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-xl space-y-3 border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Vehicle Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Make / Model</label>
+                    <input
+                      type="text"
+                      required
+                      value={editMakeModel}
+                      onChange={(e) => setEditMakeModel(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Registration No</label>
+                    <input
+                      type="text"
+                      required
+                      value={editRegNo}
+                      onChange={(e) => setEditRegNo(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Chassis No</label>
+                    <input
+                      type="text"
+                      value={editChassisNo}
+                      onChange={(e) => setEditChassisNo(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Engine No</label>
+                    <input
+                      type="text"
+                      value={editEngineNo}
+                      onChange={(e) => setEditEngineNo(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-3.5 rounded-xl space-y-3 border border-slate-200">
+                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Hirer & Owner Info</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Hirer (Rider) Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editHirerName}
+                      onChange={(e) => setEditHirerName(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Hirer Phone</label>
+                    <input
+                      type="text"
+                      required
+                      value={editHirerPhone}
+                      onChange={(e) => setEditHirerPhone(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Owner Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={editOwnerName}
+                      onChange={(e) => setEditOwnerName(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Owner Phone</label>
+                    <input
+                      type="text"
+                      required
+                      value={editOwnerPhone}
+                      onChange={(e) => setEditOwnerPhone(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-lg text-xs p-2 focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {editError && (
+                <p className="text-xs p-2.5 rounded-lg border font-semibold text-rose-600 bg-rose-50 border-rose-200">
+                  {editError}
+                </p>
+              )}
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-4 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg shadow-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                  {savingEdit ? 'Saving...' : 'Save Agreement Changes'}
                 </button>
               </div>
             </form>

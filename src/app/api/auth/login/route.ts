@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     // 2FA Verification for ADMIN and SUPER_ADMIN (Skip for DEMO user)
-    const isDemoAdmin = user.phone === '0550000000';
+    const isDemoAdmin = user.phone === '0550000000' || user.email === 'demo@workandpay.gh';
     if ((user.role === 'ADMIN' || user.role === 'SUPER_ADMIN') && !isDemoAdmin) {
       const { token } = body;
 

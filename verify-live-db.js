@@ -8,15 +8,20 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  console.log('Testing live DB connection...');
-  const agreements = await prisma.agreement.findMany({ take: 1 });
-  console.log(`Successfully fetched ${agreements.length} agreements.`);
-  
-  console.log('Testing Guarantor table via raw query...');
-  const guarantors = await prisma.$queryRaw`SELECT * FROM "Guarantor" LIMIT 1;`;
-  console.log(`Successfully queried Guarantor table! Found ${guarantors.length} rows.`);
-  
-  console.log('Database integrity verified! Zero downtime.');
+  console.log('Testing live DB connection and new tables...');
+  try {
+    const orgs = await prisma.$queryRaw`SELECT "id", "payoutNetwork", "payoutAccountName" FROM "Organization" LIMIT 1;`;
+    console.log('Organization payout columns exist! Row:', orgs[0]);
+
+    const walletRequests = await prisma.$queryRaw`SELECT * FROM "WalletChangeRequest" LIMIT 1;`;
+    console.log('WalletChangeRequest table exists! Rows found:', walletRequests.length);
+
+    console.log('Live Database is fully updated and verified!');
+  } catch (err) {
+    console.error('Error verifying live DB:', err);
+  } finally {
+    await prisma.$disconnect();
+  }
 }
 
-main().catch(console.error).finally(() => prisma.$disconnect());
+main();

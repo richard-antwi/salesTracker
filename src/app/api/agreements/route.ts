@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getCurrentSession, hashPassword } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { calculateAgreementSummary } from '@/lib/calculations';
+import { notifications } from '@/lib/notifications';
 
 export async function GET() {
   try {
@@ -320,7 +321,7 @@ export async function POST(request: Request) {
 
     // 4. Send Notifications
     await notifications.sendAgreementCreatedRider(hirer, agreement);
-    await notifications.sendAgreementCreatedOwner(session.email || null, ownerName, agreement);
+    await notifications.sendAgreementCreatedOwner((session as any).email || null, ownerName, agreement);
 
     return NextResponse.json({
       agreement,

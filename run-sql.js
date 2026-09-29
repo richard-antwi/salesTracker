@@ -27,6 +27,34 @@ async function runFor(url) {
       `);
     } catch (e) {
       if (e.code !== '42710') { // 42710 is duplicate_object
+        console.error('Error adding foreign key for Guarantor:', e);
+      }
+    }
+
+    try {
+      await client.query(`
+        CREATE TABLE "Witness" (
+            "id" TEXT NOT NULL,
+            "agreementId" TEXT NOT NULL,
+            "name" TEXT NOT NULL,
+            "phone" TEXT,
+            "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+            CONSTRAINT "Witness_pkey" PRIMARY KEY ("id")
+        );
+      `);
+    } catch (e) {
+      if (e.code !== '42P07') { // 42P07 is duplicate_table
+        console.error('Error creating Witness table:', e);
+      }
+    }
+
+    try {
+      await client.query(`
+        ALTER TABLE "Witness" ADD CONSTRAINT "Witness_agreementId_fkey" FOREIGN KEY ("agreementId") REFERENCES "Agreement"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+      `);
+    } catch (e) {
+      if (e.code !== '42710') { // 42710 is duplicate_object
         console.error('Error adding foreign key:', e);
       }
     }
