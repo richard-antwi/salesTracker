@@ -97,7 +97,17 @@ export async function GET() {
       prisma.withdrawalRequest.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
-          organization: { select: { id: true, name: true } },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              payoutNetwork: true,
+              payoutAccountName: true,
+              payoutAccountNumber: true,
+              contactEmail: true,
+              contactPhone: true,
+            },
+          },
         },
       }),
 
@@ -105,7 +115,17 @@ export async function GET() {
       prisma.walletChangeRequest.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
-          organization: { select: { id: true, name: true } },
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              payoutNetwork: true,
+              payoutAccountName: true,
+              payoutAccountNumber: true,
+              contactEmail: true,
+              contactPhone: true,
+            },
+          },
         },
       }),
 

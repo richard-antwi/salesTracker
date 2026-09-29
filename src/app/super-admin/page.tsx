@@ -225,6 +225,27 @@ export default function EnterpriseSuperAdminDashboard() {
     }
   }
 
+  // Handler: Wallet Change Request Approval / Rejection
+  async function handleWalletChangeStatus(id: string, status: 'APPROVED' | 'REJECTED') {
+    if (!confirm(`Are you sure you want to ${status.toLowerCase()} this wallet change request?`)) return;
+    setUpdatingId(id);
+    try {
+      const res = await fetch('/api/super-admin/wallet-change', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      const resData = await res.json();
+      if (!res.ok) throw new Error(resData.error || 'Failed to update wallet request');
+      alert(resData.message || 'Wallet change request updated.');
+      await fetchGlobalData();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
   // Handler: User Password Reset
   async function handleUserPasswordReset(e: React.FormEvent) {
     e.preventDefault();
@@ -852,68 +873,152 @@ export default function EnterpriseSuperAdminDashboard() {
 
         {/* TAB 5: Withdrawals & Payouts */}
         {activeTab === 'withdrawals' && (
-          <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-            <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="font-bold text-sm text-white flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-emerald-400" /> Fleet Owner Payout & Withdrawal Requests
-              </h2>
-              <span className="text-xs text-slate-400 font-medium">{filteredWithdrawals.length} withdrawal requests</span>
-            </div>
+          <div className="space-y-6">
+            {/* Wallet Change Approval Requests (Anti-Scam Verification) */}
+            {data?.walletChanges && data.walletChanges.filter((wc: any) => wc.status === 'PENDING').length > 0 && (
+              <div className="bg-amber-950/40 border border-amber-500/30 rounded-2xl p-5 space-y-4 shadow-xl">
+                <div className="flex items-center justify-between border-b border-amber-500/20 pb-3">
+                  <h3 className="font-bold text-sm text-amber-300 flex items-center gap-2">
+                    <ShieldAlert className="w-5 h-5 text-amber-400" /> Anti-Scam Security: Pending Wallet Update Requests ({data.walletChanges.filter((wc: any) => wc.status === 'PENDING').length})
+                  </h3>
+                  <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-full border border-amber-500/20 uppercase tracking-wider">
+                    Super Admin Verification Required
+                  </span>
+                </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs text-slate-300">
-                <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
-                  <tr>
-                    <th className="p-3.5">Organization</th>
-                    <th className="p-3.5">Amount</th>
-                    <th className="p-3.5">Date Requested</th>
-                    <th className="p-3.5">Status</th>
-                    <th className="p-3.5 text-right">Approve / Reject</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 font-medium">
-                  {filteredWithdrawals.map((w) => (
-                    <tr key={w.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3.5 font-bold text-white">{w.organization?.name}</td>
-                      <td className="p-3.5 font-black text-emerald-400 text-sm">{formatCedi(w.amount)}</td>
-                      <td className="p-3.5 text-slate-400">{new Date(w.createdAt).toLocaleString()}</td>
-                      <td className="p-3.5">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                            w.status === 'APPROVED'
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : w.status === 'PENDING'
-                              ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
-                              : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                          }`}
-                        >
-                          {w.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-right">
-                        {w.status === 'PENDING' && (
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => handleWithdrawalStatus(w.id, 'APPROVED')}
-                              disabled={updatingId === w.id}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] transition-colors"
-                            >
-                              Approve Payout
-                            </button>
-                            <button
-                              onClick={() => handleWithdrawalStatus(w.id, 'REJECTED')}
-                              disabled={updatingId === w.id}
-                              className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-lg font-bold text-[11px] transition-colors"
-                            >
-                              Reject
-                            </button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {data.walletChanges
+                    .filter((wc: any) => wc.status === 'PENDING')
+                    .map((wc: any) => (
+                      <div key={wc.id} className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-white text-sm">{wc.organization?.name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">Requested by: {wc.requestedBy}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs bg-slate-950 p-3 rounded-lg border border-slate-800">
+                          <div>
+                            <p className="text-[10px] text-slate-500 font-bold uppercase">Current Verified Wallet</p>
+                            <p className="font-semibold text-slate-400 text-[11px] truncate">
+                              {wc.organization?.payoutNetwork || 'None'} &bull; {wc.organization?.payoutAccountName || 'Not Set'}
+                            </p>
+                            <p className="font-mono text-slate-500 text-[11px]">{wc.organization?.payoutAccountNumber || 'N/A'}</p>
                           </div>
-                        )}
-                      </td>
+                          <div className="border-l border-slate-800 pl-2">
+                            <p className="text-[10px] text-emerald-400 font-bold uppercase">Requested New Wallet</p>
+                            <p className="font-bold text-emerald-300 text-[11px]">
+                              {wc.newNetwork} &bull; {wc.newAccountName}
+                            </p>
+                            <p className="font-mono text-white text-[11px] font-bold">{wc.newAccountNumber}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            onClick={() => handleWalletChangeStatus(wc.id, 'REJECTED')}
+                            disabled={updatingId === wc.id}
+                            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-bold transition-all"
+                          >
+                            Reject Request
+                          </button>
+                          <button
+                            onClick={() => handleWalletChangeStatus(wc.id, 'APPROVED')}
+                            disabled={updatingId === wc.id}
+                            className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md"
+                          >
+                            Approve Wallet Update
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* Withdrawal Requests Main Table */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+              <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <h2 className="font-bold text-sm text-white flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-emerald-400" /> Fleet Owner Payout & Withdrawal Requests
+                </h2>
+                <span className="text-xs text-slate-400 font-medium">{filteredWithdrawals.length} withdrawal requests</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-slate-800">
+                    <tr>
+                      <th className="p-3.5">Organization</th>
+                      <th className="p-3.5">Destination Payout Wallet</th>
+                      <th className="p-3.5">Amount Requested</th>
+                      <th className="p-3.5">Date Requested</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-right">Approve / Reject</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                    {filteredWithdrawals.map((w) => (
+                      <tr key={w.id} className="hover:bg-slate-800/40 transition-colors">
+                        <td className="p-3.5 font-bold text-white">{w.organization?.name}</td>
+                        <td className="p-3.5">
+                          {w.organization?.payoutAccountNumber ? (
+                            <div>
+                              <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                                <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded text-[9px] font-extrabold uppercase">
+                                  {w.organization.payoutNetwork || 'MOMO'}
+                                </span>
+                                <span>{w.organization.payoutAccountName}</span>
+                              </div>
+                              <div className="font-mono text-slate-300 text-[11px] mt-0.5">
+                                {w.organization.payoutAccountNumber}
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-[11px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-1 rounded border border-rose-500/20">
+                              ⚠️ No Verified Wallet Registered
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3.5 font-black text-emerald-400 text-sm">{formatCedi(w.amount)}</td>
+                        <td className="p-3.5 text-slate-400">{new Date(w.createdAt).toLocaleString()}</td>
+                        <td className="p-3.5">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              w.status === 'APPROVED'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : w.status === 'PENDING'
+                                ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 animate-pulse'
+                                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                            }`}
+                          >
+                            {w.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          {w.status === 'PENDING' && (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => handleWithdrawalStatus(w.id, 'APPROVED')}
+                                disabled={updatingId === w.id}
+                                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-bold text-[11px] transition-colors shadow-sm"
+                              >
+                                Approve Payout
+                              </button>
+                              <button
+                                onClick={() => handleWithdrawalStatus(w.id, 'REJECTED')}
+                                disabled={updatingId === w.id}
+                                className="px-2.5 py-1 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-lg font-bold text-[11px] transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
