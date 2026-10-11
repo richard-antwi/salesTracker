@@ -39,7 +39,7 @@ import {
   Send,
   MessageSquare,
 } from 'lucide-react';
-import { formatCedi } from '@/lib/calculations';
+import { formatCedi, calculateAgreementSummary } from '@/lib/calculations';
 
 type ActiveTab = 'orgs' | 'agreements' | 'vehicles' | 'payments' | 'withdrawals' | 'users' | 'wallets' | 'billing' | 'sms';
 
@@ -156,6 +156,44 @@ export default function EnterpriseSuperAdminDashboard() {
       alert(err.message || 'Error updating rider SMS setting');
     } finally {
       setTogglingRiderId(null);
+    }
+  }
+
+  const [sendingOverdueAgrId, setSendingOverdueAgrId] = useState<string | null>(null);
+
+  async function handleSendOverdueAlert(agreementId: string, hirerName: string, phone: string, reg: string) {
+    if (
+      !confirm(
+        `🚨 Send URGENT Overdue SMS to rider ${hirerName} (${phone}) for motorcycle ${reg}?\n\nThis will send an SMS to the rider and email alerts to both the Fleet Owner and Admin.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setSendingOverdueAgrId(agreementId);
+      const res = await fetch('/api/super-admin/sms/send-overdue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agreementId }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || 'Failed to dispatch overdue alert');
+
+      setSmsResult({
+        success: true,
+        message: `🚨 Overdue SMS delivered to ${result.riderName} (${result.phone}) for ${result.vehicleReg}! (${result.daysOverdue} days late, GHS ${Number(result.balanceRemaining).toLocaleString()} remaining)`,
+      });
+
+      fetchSmsBalance();
+      fetchGlobalData();
+    } catch (err: any) {
+      setSmsResult({
+        success: false,
+        message: err.message || 'Failed to dispatch overdue alert',
+      });
+    } finally {
+      setSendingOverdueAgrId(null);
     }
   }
 
@@ -1392,6 +1430,122 @@ export default function EnterpriseSuperAdminDashboard() {
                 </button>
               </div>
             )}
+
+            {/* Overdue Riders Immediate Action Section */}
+            {(() => {
+              const overdueContracts = (data?.agreements || [])
+                .filter((agr: any) => agr.status === 'ACTIVE')
+                .map((agr: any) => {
+                  try {
+                    const summary = calculateAgreementSummary(agr);
+                    const isOverdue =
+                      summary.statusBadge.label === 'Overdue' ||
+                      summary.statusBadge.label === 'Severely Overdue';
+                    return {
+                      agr,
+                      summary,
+                      isOverdue,
+                      daysOverdue: summary.statusBadge.daysOverdue,
+                      balanceRemaining: summary.balanceRemaining,
+                    };
+                  } catch {
+                    return null;
+                  }
+                })
+                .filter((item: any) => item && item.isOverdue);
+
+              if (overdueContracts.length === 0) return null;
+
+              return (
+                <div className="bg-rose-950/20 border border-rose-500/30 rounded-2xl p-5 shadow-2xl space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                          Overdue Accounts Requiring SMS Alert
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                            {overdueContracts.length} Overdue
+                          </span>
+                        </h3>
+                        <p className="text-[11px] text-slate-400">
+                          Click &quot;Send Overdue SMS&quot; to instantly dispatch the overdue SMS to the rider&apos;s phone and send email alerts to both owners.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-xl border border-rose-500/20">
+                    <table className="w-full text-left text-xs text-slate-300">
+                      <thead className="bg-slate-900 text-slate-400 uppercase tracking-wider text-[10px] font-bold border-b border-rose-500/20">
+                        <tr>
+                          <th className="p-3">Rider Name</th>
+                          <th className="p-3">Phone</th>
+                          <th className="p-3">Vehicle</th>
+                          <th className="p-3">Organization</th>
+                          <th className="p-3">Days Overdue</th>
+                          <th className="p-3">Balance Remaining</th>
+                          <th className="p-3 text-right">Instant Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-rose-500/10 bg-slate-950/40">
+                        {overdueContracts.map(({ agr, summary, daysOverdue, balanceRemaining }: any) => {
+                          const isSending = sendingOverdueAgrId === agr.id;
+                          return (
+                            <tr key={agr.id} className="hover:bg-rose-500/5 transition-colors">
+                              <td className="p-3">
+                                <div className="font-bold text-white">{agr.hirer?.name || 'Unknown'}</div>
+                                {agr.hirer?.email && (
+                                  <div className="text-[10px] text-slate-500">{agr.hirer.email}</div>
+                                )}
+                              </td>
+                              <td className="p-3 font-mono text-emerald-400 font-semibold">{agr.hirer?.phone}</td>
+                              <td className="p-3 font-mono text-amber-300 font-semibold">{agr.vehicle?.registrationNo}</td>
+                              <td className="p-3 text-slate-300 text-[11px]">{agr.organization?.name || 'N/A'}</td>
+                              <td className="p-3">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                                  ⚠️ {daysOverdue} {daysOverdue === 1 ? 'day' : 'days'} late
+                                </span>
+                              </td>
+                              <td className="p-3 font-mono text-rose-300 font-bold">
+                                {formatCedi(balanceRemaining)}
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  type="button"
+                                  disabled={isSending}
+                                  onClick={() =>
+                                    handleSendOverdueAlert(
+                                      agr.id,
+                                      agr.hirer?.name,
+                                      agr.hirer?.phone,
+                                      agr.vehicle?.registrationNo
+                                    )
+                                  }
+                                  className="px-3 py-1.5 rounded-xl text-[11px] font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/30 transition-all inline-flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                  {isSending ? (
+                                    <>
+                                      <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Dispatching...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Send className="w-3.5 h-3.5" /> Send Overdue SMS
+                                    </>
+                                  )}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Main Two-Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
