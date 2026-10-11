@@ -54,15 +54,19 @@ export async function GET(request: Request) {
         summary.statusBadge.label === 'Overdue' ||
         summary.statusBadge.label === 'Severely Overdue'
       ) {
-        // Send overdue notification to organization's contact email or fallback to global admin email
-        const targetAdminEmail = agr.organization?.contactEmail || CONFIG.ADMIN_EMAIL;
-        await notifications.sendOverdueAlert(
-          targetAdminEmail,
-          agr.hirer.name,
-          agr.vehicle.registrationNo,
-          summary.statusBadge.daysOverdue,
-          summary.balanceRemaining
-        );
+        // Send Overdue SMS to Rider ONLY, and Overdue Email to BOTH Fleet Owner (Admin) and Platform Owner
+        await notifications.sendOverdueAlert({
+          hirer: {
+            name: agr.hirer.name,
+            phone: agr.hirer.phone,
+            email: agr.hirer.email,
+          },
+          vehicleReg: agr.vehicle.registrationNo,
+          daysOverdue: summary.statusBadge.daysOverdue,
+          balanceRemaining: summary.balanceRemaining,
+          fleetOwnerEmail: agr.organization?.contactEmail,
+          platformOwnerEmail: CONFIG.ADMIN_EMAIL,
+        });
         overdueAlertsSent++;
       }
     }

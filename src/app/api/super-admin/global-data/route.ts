@@ -20,6 +20,7 @@ export async function GET() {
       withdrawals,
       walletChanges,
       settings,
+      rawSmsLogs,
     ] = await Promise.all([
       // 1. Organizations
       prisma.organization.findMany({
@@ -88,6 +89,7 @@ export async function GET() {
           email: true,
           role: true,
           mustChangePassword: true,
+          receivePaymentSms: true,
           createdAt: true,
           organization: { select: { id: true, name: true } },
         },
@@ -131,6 +133,12 @@ export async function GET() {
 
       // 8. Global System Settings
       prisma.systemSettings.findFirst(),
+
+      // 9. Recent SMS Logs (Top 100)
+      prisma.smsLog.findMany({
+        take: 100,
+        orderBy: { createdAt: 'desc' },
+      }),
     ]);
 
     // Process calculated summaries for all agreements
@@ -186,6 +194,7 @@ export async function GET() {
       withdrawals,
       walletChanges,
       settings: settings || { monthlySubscriptionFee: 50 },
+      smsLogs: rawSmsLogs,
     });
   } catch (error: any) {
     console.error('Error fetching global super admin data:', error);

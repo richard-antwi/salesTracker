@@ -2,6 +2,7 @@ import nodemailer, { Transporter } from 'nodemailer';
 import { Resend } from 'resend';
 import { CONFIG } from './config';
 import { formatCedi } from './calculations';
+import { prisma } from './db';
 
 export interface SendEmailOptions {
   to: string;
@@ -13,6 +14,8 @@ export interface SendEmailOptions {
 export interface SendSmsOptions {
   to: string;
   message: string;
+  purpose?: string;
+  recipientName?: string;
 }
 
 export interface EmailProvider {
@@ -21,6 +24,7 @@ export interface EmailProvider {
 
 export interface SmsProvider {
   send(options: SendSmsOptions): Promise<{ success: boolean; id?: string; error?: string }>;
+  getBalance?(): Promise<{ success: boolean; balance?: number; model?: string; error?: string }>;
 }
 
 // 1. Gmail SMTP Email Provider (Active for direct inbox delivery without custom domain)
@@ -165,11 +169,189 @@ export class ResendEmailProvider implements EmailProvider {
   }
 }
 
-// 3. Africa's Talking SMS Provider (Stubbed by default via SMS_ENABLED)
+// 3. SMSOnlineGH Provider (Primary SMS Gateway for Ghana: https://dev.smsonlinegh.com/)
+/**
+ * Normalizes Ghanaian phone numbers into the standard destination format.
+ * e.g. "0592303054" -> "233592303054", "0240000000" -> "233240000000"
+ */
+export function normalizeGhanaPhone(phone: string): string {
+  const cleaned = phone.replace(/[\s\-\+\(\)]/g, '');
+  if (cleaned.startsWith('0') && cleaned.length === 10) {
+    return `233${cleaned.substring(1)}`;
+  }
+  if (cleaned.length === 9) {
+    return `233${cleaned}`;
+  }
+  if (cleaned.startsWith('233') && cleaned.length === 12) {
+    return cleaned;
+  }
+  return cleaned;
+}
+
+export class SmsOnlineGhProvider implements SmsProvider {
+  private apiKey: string;
+  private senderId: string;
+
+  constructor() {
+    this.apiKey = CONFIG.SMSONLINEGH_API_KEY;
+    this.senderId = CONFIG.SMSONLINEGH_SENDER_ID || 'WorkAndPay';
+  }
+
+  normalizeGhanaPhone(phone: string): string {
+    return normalizeGhanaPhone(phone);
+  }
+
+  async send(options: SendSmsOptions): Promise<{ success: boolean; id?: string; error?: string }> {
+    const destination = this.normalizeGhanaPhone(options.to);
+
+    // Fallback stub mode when SMS is disabled or API key is not yet set
+    if (!CONFIG.SMS_ENABLED || !this.apiKey) {
+      console.log(`\n📱 [SMSONLINEGH STUB MODE]`);
+      console.log(`   To: ${destination} (Raw: ${options.to})`);
+      console.log(`   Sender ID: ${this.senderId}`);
+      console.log(`   Message: ${options.message}`);
+      console.log(`   Purpose: ${options.purpose || 'GENERAL'}`);
+      console.log(`--------------------------------------------------\n`);
+
+      try {
+        await prisma.smsLog.create({
+          data: {
+            recipient: destination,
+            recipientName: options.recipientName || null,
+            message: options.message,
+            senderId: this.senderId,
+            purpose: options.purpose || 'GENERAL',
+            status: 'SENT',
+            batchId: `stub-${Date.now()}`,
+          },
+        });
+      } catch (dbErr) {
+        console.warn('Could not save stub to SmsLog:', dbErr);
+      }
+
+      return { success: true, id: `stub-${Date.now()}` };
+    }
+
+    try {
+      const payload = {
+        text: options.message,
+        type: 0, // GSM default
+        sender: this.senderId,
+        destinations: [destination],
+      };
+
+      const response = await fetch('https://api.smsonlinegh.com/v5/message/sms/send', {
+        method: 'POST',
+        headers: {
+          'Host': 'api.smsonlinegh.com',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `key ${this.apiKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data?.handshake?.id !== 0) {
+        const errorLabel = data?.handshake?.label || `HTTP_${response.status}`;
+        console.error('❌ [SMSONLINEGH GATEWAY ERROR]:', data);
+
+        try {
+          await prisma.smsLog.create({
+            data: {
+              recipient: destination,
+              recipientName: options.recipientName || null,
+              message: options.message,
+              senderId: this.senderId,
+              purpose: options.purpose || 'GENERAL',
+              status: 'FAILED',
+              error: errorLabel,
+            },
+          });
+        } catch {}
+
+        return { success: false, error: errorLabel };
+      }
+
+      const batchId = data?.data?.batch || `smsonlinegh-${Date.now()}`;
+      console.log(`✅ [SMSONLINEGH LIVE] Dispatched to ${destination} (Batch: ${batchId})`);
+
+      try {
+        await prisma.smsLog.create({
+          data: {
+            recipient: destination,
+            recipientName: options.recipientName || null,
+            message: options.message,
+            senderId: this.senderId,
+            purpose: options.purpose || 'GENERAL',
+            status: 'SENT',
+            batchId,
+          },
+        });
+      } catch {}
+
+      return { success: true, id: batchId };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown SMSOnlineGH Error';
+      console.error('❌ [SMSONLINEGH EXCEPTION]:', errMsg);
+
+      try {
+        await prisma.smsLog.create({
+          data: {
+            recipient: destination,
+            recipientName: options.recipientName || null,
+            message: options.message,
+            senderId: this.senderId,
+            purpose: options.purpose || 'GENERAL',
+            status: 'FAILED',
+            error: errMsg,
+          },
+        });
+      } catch {}
+
+      return { success: false, error: errMsg };
+    }
+  }
+
+  async getBalance(): Promise<{ success: boolean; balance?: number; model?: string; error?: string }> {
+    if (!this.apiKey) {
+      return { success: true, balance: 1000, model: 'STUB_DEV' };
+    }
+
+    try {
+      const response = await fetch('https://api.smsonlinegh.com/v5/account/balance', {
+        method: 'POST',
+        headers: {
+          'Host': 'api.smsonlinegh.com',
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `key ${this.apiKey}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok || data?.handshake?.id !== 0) {
+        return { success: false, error: data?.handshake?.label || 'Failed to fetch balance' };
+      }
+
+      return {
+        success: true,
+        balance: data?.data?.balance ?? 0,
+        model: data?.data?.model ?? 'units',
+      };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Failed to query balance';
+      return { success: false, error: errMsg };
+    }
+  }
+}
+
+// 3.5 Africa's Talking SMS Provider (Retained as backup gateway)
 export class AfricasTalkingSmsProvider implements SmsProvider {
   async send({ to, message }: SendSmsOptions) {
     if (!CONFIG.SMS_ENABLED) {
-      console.log(`📱 [SMS STUB] Would have sent to ${to} : ${message}`);
+      console.log(`📱 [AFRICA'S TALKING STUB] Would have sent to ${to} : ${message}`);
       return { success: true, id: 'sms-stub-id' };
     }
 
@@ -199,14 +381,14 @@ export class AfricasTalkingSmsProvider implements SmsProvider {
   }
 }
 
-// 4. Facade Notification Service (Defaults to GmailSmtpEmailProvider)
+// 4. Facade Notification Service
 export class NotificationService {
   private emailProvider: EmailProvider;
   private smsProvider: SmsProvider;
 
   constructor(
     emailProvider?: EmailProvider,
-    smsProvider: SmsProvider = new AfricasTalkingSmsProvider()
+    smsProvider?: SmsProvider
   ) {
     if (emailProvider) {
       this.emailProvider = emailProvider;
@@ -219,12 +401,39 @@ export class NotificationService {
         this.emailProvider = new GmailSmtpEmailProvider();
       }
     }
-    this.smsProvider = smsProvider;
+
+    if (smsProvider) {
+      this.smsProvider = smsProvider;
+    } else {
+      if (CONFIG.SMS_PROVIDER === 'AFRICASTALKING') {
+        this.smsProvider = new AfricasTalkingSmsProvider();
+      } else {
+        this.smsProvider = new SmsOnlineGhProvider();
+      }
+    }
+  }
+
+  // Live SMS Credit Balance
+  async getSmsBalance() {
+    if (this.smsProvider.getBalance) {
+      return await this.smsProvider.getBalance();
+    }
+    return { success: true, balance: 0, model: 'units' };
+  }
+
+  // Direct / Broadcast Custom SMS (Super Admin Tool)
+  async sendCustomSms(to: string, message: string, recipientName?: string, purpose = 'BROADCAST') {
+    return await this.smsProvider.send({
+      to,
+      message,
+      recipientName,
+      purpose,
+    });
   }
 
   // Trigger 1: Payment Recorded
   async sendPaymentReceived(
-    rider: { name: string; email?: string | null; phone: string },
+    rider: { name: string; email?: string | null; phone: string; receivePaymentSms?: boolean },
     payment: { amount: number; channel: string },
     balanceRemaining: number
   ) {
@@ -232,13 +441,19 @@ export class NotificationService {
     const formattedBalance = formatCedi(balanceRemaining);
     const textMsg = `Hello ${rider.name}, ${formattedAmount} received via ${payment.channel}. Balance now ${formattedBalance}. Thank you! - Work & Pay`;
 
-    // 1. Send SMS (or Log SMS Stub)
-    await this.smsProvider.send({
-      to: rider.phone,
-      message: textMsg,
-    });
+    // 1. Send SMS ONLY if rider is enabled by Super Admin (saves SMS credits)
+    if (rider.receivePaymentSms) {
+      await this.smsProvider.send({
+        to: rider.phone,
+        message: textMsg,
+        purpose: 'PAYMENT',
+        recipientName: rider.name,
+      });
+    } else {
+      console.log(`📱 [SMS SAVED] Payment SMS not enabled for rider ${rider.name} (${rider.phone}). Free email will handle receipt.`);
+    }
 
-    // 2. Send Email if rider has an email address
+    // 2. Send Free Email if rider has an email address
     if (rider.email) {
       const htmlMsg = `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
@@ -262,7 +477,7 @@ export class NotificationService {
     }
   }
 
-  // Trigger 2: Due Date Reminder (1 day before due date)
+  // Trigger 2: Due Date Reminder (1 day before due date) - FREE EMAIL ONLY
   async sendDueDateReminder(
     rider: { name: string; email?: string | null; phone: string },
     dueDate: Date,
@@ -276,8 +491,7 @@ export class NotificationService {
     const formattedAmount = formatCedi(installmentAmount);
     const textMsg = `Reminder: Hello ${rider.name}, your hire-purchase payment of ${formattedAmount} is due tomorrow (${formattedDate}). Please pay via MoMo/Cash. - Work & Pay`;
 
-    await this.smsProvider.send({ to: rider.phone, message: textMsg });
-
+    // Free Email does the reminder work to avoid consuming SMS credits on regular reminders
     if (rider.email) {
       const htmlMsg = `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; background: #ffffff;">
@@ -300,22 +514,69 @@ export class NotificationService {
     }
   }
 
-  // Trigger 3: Overdue Alert (Sent to Admin/Owner)
+  // Trigger 3: Overdue Alert (SMS TO RIDER ONLY, EMAIL TO BOTH OWNERS)
   async sendOverdueAlert(
-    adminEmail: string,
-    hirerName: string,
-    vehicleReg: string,
-    daysOverdue: number,
-    balanceRemaining: number
+    optionsOrAdminEmail:
+      | string
+      | {
+          hirer: { name: string; phone: string; email?: string | null };
+          vehicleReg: string;
+          daysOverdue: number;
+          balanceRemaining: number;
+          fleetOwnerEmail?: string | null;
+          platformOwnerEmail?: string | null;
+        },
+    legacyHirerName?: string,
+    legacyVehicleReg?: string,
+    legacyDaysOverdue?: number,
+    legacyBalanceRemaining?: number
   ) {
-    const formattedBalance = formatCedi(balanceRemaining);
-    const subject = `⚠️ Overdue Alert: ${hirerName} (${vehicleReg}) is ${daysOverdue} days late`;
-    const textMsg = `Admin Alert: Rider ${hirerName} (Vehicle: ${vehicleReg}) is ${daysOverdue} days overdue on payment. Remaining balance: ${formattedBalance}.`;
+    let hirerName = '';
+    let hirerPhone = '';
+    let vehicleReg = '';
+    let daysOverdue = 0;
+    let balanceRemaining = 0;
+    const targetEmails = new Set<string>();
 
+    if (typeof optionsOrAdminEmail === 'string') {
+      if (optionsOrAdminEmail) targetEmails.add(optionsOrAdminEmail);
+      hirerName = legacyHirerName || 'Rider';
+      vehicleReg = legacyVehicleReg || 'Vehicle';
+      daysOverdue = legacyDaysOverdue || 0;
+      balanceRemaining = legacyBalanceRemaining || 0;
+    } else {
+      hirerName = optionsOrAdminEmail.hirer.name;
+      hirerPhone = optionsOrAdminEmail.hirer.phone;
+      vehicleReg = optionsOrAdminEmail.vehicleReg;
+      daysOverdue = optionsOrAdminEmail.daysOverdue;
+      balanceRemaining = optionsOrAdminEmail.balanceRemaining;
+      if (optionsOrAdminEmail.fleetOwnerEmail) targetEmails.add(optionsOrAdminEmail.fleetOwnerEmail);
+      if (optionsOrAdminEmail.platformOwnerEmail) targetEmails.add(optionsOrAdminEmail.platformOwnerEmail);
+    }
+
+    if (targetEmails.size === 0 && CONFIG.ADMIN_EMAIL) {
+      targetEmails.add(CONFIG.ADMIN_EMAIL);
+    }
+
+    const formattedBalance = formatCedi(balanceRemaining);
+
+    // 1. Send SMS to RIDER ONLY! (Riders don't check email, SMS creates immediate urgency)
+    if (hirerPhone) {
+      const smsText = `URGENT: Hello ${hirerName}, your hire-purchase payment for ${vehicleReg} is ${daysOverdue} days OVERDUE. Balance: ${formattedBalance}. Please settle immediately to avoid vehicle repossession. - Work & Pay`;
+      await this.smsProvider.send({
+        to: hirerPhone,
+        message: smsText,
+        purpose: 'OVERDUE',
+        recipientName: hirerName,
+      });
+    }
+
+    // 2. Send Email to BOTH Fleet Owner (Admin) AND Platform Owner (Super Admin)
+    const subject = `⚠️ Overdue Alert: ${hirerName} (${vehicleReg}) is ${daysOverdue} days late`;
     const htmlMsg = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; border: 1px solid #fecaca; border-radius: 12px; padding: 24px; background: #fff5f5;">
         <h2 style="color: #dc2626; margin-top: 0;">Overdue Payment Alert</h2>
-        <p>Attention Admin,</p>
+        <p>Attention Fleet Management & Platform Administration,</p>
         <p>The following hire-purchase agreement has been flagged as <strong>Overdue</strong>:</p>
         <ul style="background: #ffffff; padding: 16px; border-radius: 8px; list-style: none; border: 1px solid #fee2e2;">
           <li><strong>Rider Name:</strong> ${hirerName}</li>
@@ -323,17 +584,21 @@ export class NotificationService {
           <li><strong>Days Overdue:</strong> ${daysOverdue} days late</li>
           <li><strong>Outstanding Balance:</strong> ${formattedBalance}</li>
         </ul>
-        <p style="color: #7f1d1d; font-size: 13px;">Please check the Admin Dashboard to follow up with the rider.</p>
+        <p style="color: #7f1d1d; font-size: 13px;">An overdue SMS notification has been dispatched to the rider's phone. Please review the Admin Dashboard to coordinate recovery or settlement.</p>
       </div>
     `;
+    const textMsg = `Admin Alert: Rider ${hirerName} (Vehicle: ${vehicleReg}) is ${daysOverdue} days overdue on payment. Remaining balance: ${formattedBalance}.`;
 
-    await this.emailProvider.send({
-      to: adminEmail,
-      subject,
-      html: htmlMsg,
-      text: textMsg,
-    });
+    for (const email of targetEmails) {
+      await this.emailProvider.send({
+        to: email,
+        subject,
+        html: htmlMsg,
+        text: textMsg,
+      });
+    }
   }
+
 
   // Trigger 4: Fully Paid Milestone (Sent to both Rider and Admin)
   async sendFullyPaidMilestone(

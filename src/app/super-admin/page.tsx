@@ -35,10 +35,13 @@ import {
   ShieldCheck,
   Download,
   Edit,
+  Smartphone,
+  Send,
+  MessageSquare,
 } from 'lucide-react';
 import { formatCedi } from '@/lib/calculations';
 
-type ActiveTab = 'orgs' | 'agreements' | 'vehicles' | 'payments' | 'withdrawals' | 'users' | 'wallets' | 'billing';
+type ActiveTab = 'orgs' | 'agreements' | 'vehicles' | 'payments' | 'withdrawals' | 'users' | 'wallets' | 'billing' | 'sms';
 
 export default function EnterpriseSuperAdminDashboard() {
   const router = useRouter();
@@ -72,6 +75,7 @@ export default function EnterpriseSuperAdminDashboard() {
     withdrawals: any[];
     walletChanges: any[];
     settings: { monthlySubscriptionFee: number };
+    smsLogs?: any[];
   } | null>(null);
 
   // Super Admin Agreement Inspection Modal State
@@ -100,6 +104,124 @@ export default function EnterpriseSuperAdminDashboard() {
   const [newPassword, setNewPassword] = useState('');
   const [updatingUser, setUpdatingUser] = useState(false);
   const [userSuccessMsg, setUserSuccessMsg] = useState('');
+
+  // SMS Hub & Messaging Center State
+  const [smsBalance, setSmsBalance] = useState<number | null>(null);
+  const [smsLoadingBalance, setSmsLoadingBalance] = useState(false);
+  const [smsRecipientMode, setSmsRecipientMode] = useState<'all' | 'selected' | 'test'>('selected');
+  const [smsSelectedRiderIds, setSmsSelectedRiderIds] = useState<string[]>([]);
+  const [smsBroadcastMessage, setSmsBroadcastMessage] = useState('');
+  const [smsTestNumber, setSmsTestNumber] = useState('0592303054');
+  const [smsSending, setSmsSending] = useState(false);
+  const [smsResult, setSmsResult] = useState<{ success: boolean; message: string; details?: any } | null>(null);
+  const [togglingRiderId, setTogglingRiderId] = useState<string | null>(null);
+  const [riderSearchFilter, setRiderSearchFilter] = useState('');
+
+  async function fetchSmsBalance() {
+    try {
+      setSmsLoadingBalance(true);
+      const res = await fetch('/api/super-admin/sms/balance');
+      const json = await res.json();
+      if (res.ok) {
+        setSmsBalance(json.balance);
+      }
+    } catch (e) {
+      console.error('Failed to load SMS balance', e);
+    } finally {
+      setSmsLoadingBalance(false);
+    }
+  }
+
+  async function handleToggleRiderPaymentSms(riderId: string, currentState: boolean) {
+    try {
+      setTogglingRiderId(riderId);
+      const newState = !currentState;
+      const res = await fetch('/api/super-admin/sms/riders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ riderId, receivePaymentSms: newState }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update rider SMS setting');
+      setData((prev: any) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          users: (prev.users || []).map((u: any) =>
+            u.id === riderId ? { ...u, receivePaymentSms: newState } : u
+          ),
+        };
+      });
+    } catch (err: any) {
+      alert(err.message || 'Error updating rider SMS setting');
+    } finally {
+      setTogglingRiderId(null);
+    }
+  }
+
+  async function handleSendBroadcastSms(e: React.FormEvent) {
+    e.preventDefault();
+    if (!smsBroadcastMessage.trim()) {
+      alert('Please enter an SMS message body');
+      return;
+    }
+
+    if (smsRecipientMode === 'test' && !smsTestNumber.trim()) {
+      alert('Please enter a test phone number (e.g. 0592303054)');
+      return;
+    }
+
+    if (smsRecipientMode === 'selected' && smsSelectedRiderIds.length === 0) {
+      alert('Please select at least one rider checkbox to message');
+      return;
+    }
+
+    const recipientCount =
+      smsRecipientMode === 'test'
+        ? 1
+        : smsRecipientMode === 'all'
+        ? (data?.users || []).filter((u: any) => u.role === 'RIDER').length
+        : smsSelectedRiderIds.length;
+
+    if (!confirm(`Are you sure you want to dispatch SMS to ${recipientCount} recipient(s)?`)) {
+      return;
+    }
+
+    setSmsSending(true);
+    setSmsResult(null);
+
+    try {
+      const res = await fetch('/api/super-admin/sms/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientMode: smsRecipientMode,
+          selectedUserIds: smsSelectedRiderIds,
+          message: smsBroadcastMessage,
+          testPhone: smsTestNumber,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to send SMS');
+
+      setSmsResult({
+        success: true,
+        message: `Dispatched successfully! Delivered: ${json.delivered}, Failed: ${json.failed}`,
+        details: json,
+      });
+
+      fetchSmsBalance();
+      fetchGlobalData();
+    } catch (err: any) {
+      setSmsResult({
+        success: false,
+        message: err.message || 'Failed to dispatch SMS',
+      });
+    } finally {
+      setSmsSending(false);
+    }
+  }
 
   async function fetchGlobalData() {
     try {
@@ -575,15 +697,18 @@ export default function EnterpriseSuperAdminDashboard() {
             </button>
 
             <button
-              onClick={() => setActiveTab('wallets')}
+              onClick={() => {
+                setActiveTab('sms');
+                fetchSmsBalance();
+              }}
               className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
-                activeTab === 'wallets'
+                activeTab === 'sms'
                   ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
               }`}
             >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Admin Wallets ({data?.organizations.length || 0})</span>
+              <Smartphone className="w-4 h-4" />
+              <span>SMS Hub</span>
             </button>
           </div>
 
@@ -1154,6 +1279,512 @@ export default function EnterpriseSuperAdminDashboard() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 8: SMS HUB & MESSAGING SUITE */}
+        {activeTab === 'sms' && (
+          <div className="space-y-6">
+            {/* Top Gateway Status & Credit Balance Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">SMS Gateway</span>
+                  <h3 className="text-base font-black text-white mt-1">SMSOnlineGH (v5)</h3>
+                  <p className="text-xs text-emerald-400 font-mono mt-0.5">dev.smsonlinegh.com</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Credit Balance</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <h3 className="text-2xl font-black text-white">
+                      {smsBalance !== null ? Number(smsBalance).toLocaleString() : '---'}
+                    </h3>
+                    <span className="text-xs text-slate-400 font-bold">SMS Units</span>
+                  </div>
+                  <button
+                    onClick={fetchSmsBalance}
+                    disabled={smsLoadingBalance}
+                    className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 mt-1"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${smsLoadingBalance ? 'animate-spin' : ''}`} />
+                    <span>Check Live Balance</span>
+                  </button>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="bg-slate-900/80 border border-slate-800 p-5 rounded-2xl shadow-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Payment SMS Gating</span>
+                  <div className="flex items-baseline gap-2 mt-1">
+                    <h3 className="text-2xl font-black text-amber-400">
+                      {(data?.users || []).filter((u: any) => u.role === 'RIDER' && u.receivePaymentSms).length} /{' '}
+                      {(data?.users || []).filter((u: any) => u.role === 'RIDER').length}
+                    </h3>
+                    <span className="text-xs text-slate-400 font-bold">Riders Opted In</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">Overdue SMS is automatic for all</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <ShieldAlert className="w-5 h-5" />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Test SMS Bar */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">Quick Personal Number Test</h4>
+                  <p className="text-[11px] text-slate-400">Test live gateway delivery to your personal phone number</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <input
+                  type="text"
+                  value={smsTestNumber}
+                  onChange={(e) => setSmsTestNumber(e.target.value)}
+                  placeholder="0592303054"
+                  className="bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white font-mono w-36 text-center focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+                <button
+                  type="button"
+                  disabled={smsSending}
+                  onClick={() => {
+                    setSmsRecipientMode('test');
+                    if (!smsBroadcastMessage) {
+                      setSmsBroadcastMessage('Work & Pay Live System Test: SMS integration via SMSOnlineGH is active.');
+                    }
+                  }}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Set as Target</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Feedback Message */}
+            {smsResult && (
+              <div
+                className={`p-4 rounded-2xl border text-xs font-semibold flex items-center justify-between ${
+                  smsResult.success
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                    : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                }`}
+              >
+                <span>{smsResult.message}</span>
+                <button onClick={() => setSmsResult(null)} className="text-slate-400 hover:text-white">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* Main Two-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Rider Payment SMS Opt-In & Selection Table (7 Cols) */}
+              <div className="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden flex flex-col">
+                <div className="p-4 bg-slate-900 border-b border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                      <Users className="w-4 h-4 text-emerald-400" /> Rider SMS Management
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Toggle who receives SMS on payment recording, or select riders for broadcast.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input
+                      type="text"
+                      placeholder="Search riders..."
+                      value={riderSearchFilter}
+                      onChange={(e) => setRiderSearchFilter(e.target.value)}
+                      className="bg-slate-950 border border-slate-700 rounded-xl px-2.5 py-1 text-xs text-white w-full sm:w-40 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allRiderIds = (data?.users || [])
+                          .filter((u: any) => u.role === 'RIDER')
+                          .map((u: any) => u.id);
+                        if (smsSelectedRiderIds.length === allRiderIds.length) {
+                          setSmsSelectedRiderIds([]);
+                        } else {
+                          setSmsSelectedRiderIds(allRiderIds);
+                        }
+                      }}
+                      className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-[11px] font-bold whitespace-nowrap"
+                    >
+                      {smsSelectedRiderIds.length > 0 ? 'Deselect All' : 'Select All'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto flex-1 max-h-[520px] overflow-y-auto">
+                  <table className="w-full text-left text-xs text-slate-300">
+                    <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold sticky top-0 z-10 border-b border-slate-800">
+                      <tr>
+                        <th className="p-3 text-center w-10">Select</th>
+                        <th className="p-3">Rider Name</th>
+                        <th className="p-3">Phone</th>
+                        <th className="p-3">Fleet Org</th>
+                        <th className="p-3 text-center">Payment SMS</th>
+                        <th className="p-3 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-medium">
+                      {(data?.users || [])
+                        .filter((u: any) => u.role === 'RIDER')
+                        .filter((u: any) => {
+                          if (!riderSearchFilter) return true;
+                          const q = riderSearchFilter.toLowerCase();
+                          return (
+                            u.name.toLowerCase().includes(q) ||
+                            u.phone.toLowerCase().includes(q) ||
+                            (u.organization?.name || '').toLowerCase().includes(q)
+                          );
+                        })
+                        .map((rider: any) => {
+                          const isSelected = smsSelectedRiderIds.includes(rider.id);
+                          const isToggling = togglingRiderId === rider.id;
+                          return (
+                            <tr
+                              key={rider.id}
+                              className={`hover:bg-slate-800/40 transition-colors ${
+                                isSelected ? 'bg-emerald-500/5' : ''
+                              }`}
+                            >
+                              <td className="p-3 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSmsSelectedRiderIds((prev) => [...prev, rider.id]);
+                                    } else {
+                                      setSmsSelectedRiderIds((prev) => prev.filter((id) => id !== rider.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 rounded border-slate-700 text-emerald-600 focus:ring-emerald-500"
+                                />
+                              </td>
+                              <td className="p-3">
+                                <div className="font-bold text-white">{rider.name}</div>
+                                {rider.email && (
+                                  <div className="text-[10px] text-slate-500 truncate max-w-[130px]">
+                                    {rider.email}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="p-3 font-mono text-emerald-400 font-semibold">{rider.phone}</td>
+                              <td className="p-3 text-slate-300 text-[11px]">{rider.organization?.name || 'N/A'}</td>
+                              <td className="p-3 text-center">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    rider.receivePaymentSms
+                                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                                  }`}
+                                >
+                                  {rider.receivePaymentSms ? 'ENABLED' : 'DISABLED'}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <button
+                                  type="button"
+                                  disabled={isToggling}
+                                  onClick={() => handleToggleRiderPaymentSms(rider.id, Boolean(rider.receivePaymentSms))}
+                                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition-all ${
+                                    rider.receivePaymentSms
+                                      ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/20'
+                                      : 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
+                                  } disabled:opacity-50`}
+                                >
+                                  {isToggling ? 'Updating...' : rider.receivePaymentSms ? 'Disable' : 'Enable'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Right Column: SMS Broadcast Composer & Phone Preview (5 Cols) */}
+              <div className="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl p-5 flex flex-col justify-between space-y-4">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+                    <div>
+                      <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-emerald-400" /> Send Custom SMS
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Dispatch targeted SMS directly via SMSOnlineGH</p>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-950 px-2.5 py-1 rounded-md text-emerald-400 border border-slate-800">
+                      Sender: WorkAndPay
+                    </span>
+                  </div>
+
+                  <form onSubmit={handleSendBroadcastSms} className="space-y-4">
+                    {/* Recipient Target Choice */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
+                        Recipient Target Audience
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSmsRecipientMode('selected')}
+                          className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all ${
+                            smsRecipientMode === 'selected'
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div>Selected</div>
+                          <div className="text-[9px] text-slate-500 font-normal">
+                            ({smsSelectedRiderIds.length} checked)
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSmsRecipientMode('all')}
+                          className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all ${
+                            smsRecipientMode === 'all'
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div>All Riders</div>
+                          <div className="text-[9px] text-slate-500 font-normal">
+                            ({(data?.users || []).filter((u: any) => u.role === 'RIDER').length} total)
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setSmsRecipientMode('test')}
+                          className={`p-2 rounded-xl text-[11px] font-bold border text-center transition-all ${
+                            smsRecipientMode === 'test'
+                              ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300'
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                          }`}
+                        >
+                          <div>Test Single</div>
+                          <div className="text-[9px] text-slate-500 font-normal">(Custom phone)</div>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Test Phone Input if Mode == Test */}
+                    {smsRecipientMode === 'test' && (
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                          Test Destination Number
+                        </label>
+                        <input
+                          type="text"
+                          value={smsTestNumber}
+                          onChange={(e) => setSmsTestNumber(e.target.value)}
+                          placeholder="0592303054"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                        />
+                      </div>
+                    )}
+
+                    {/* Quick Template Chips */}
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+                        Insert Template
+                      </label>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSmsBroadcastMessage(
+                              'Reminder: Please ensure scheduled weekly payments are submitted on time. Contact fleet management for assistance. - Work & Pay'
+                            )
+                          }
+                          className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md"
+                        >
+                          + Weekly Reminder
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSmsBroadcastMessage(
+                              'Important: System maintenance scheduled this Sunday. Platform access may experience brief downtime. - Work & Pay Management'
+                            )
+                          }
+                          className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md"
+                        >
+                          + Maintenance
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSmsBroadcastMessage(
+                              'Notice to all Riders: Please drive safely and ensure all DVLA protective gear is worn. Ride safe! - Work & Pay'
+                            )
+                          }
+                          className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-300 px-2 py-0.5 rounded-md"
+                        >
+                          + Safety Notice
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Message Box */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Message Body
+                        </label>
+                        <span
+                          className={`text-[10px] font-mono ${
+                            smsBroadcastMessage.length > 160 ? 'text-amber-400 font-bold' : 'text-slate-400'
+                          }`}
+                        >
+                          {smsBroadcastMessage.length} / 160 chars (
+                          {Math.max(1, Math.ceil(smsBroadcastMessage.length / 160))} SMS page)
+                        </span>
+                      </div>
+                      <textarea
+                        rows={4}
+                        value={smsBroadcastMessage}
+                        onChange={(e) => setSmsBroadcastMessage(e.target.value)}
+                        placeholder="Type message to broadcast to riders..."
+                        className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 resize-none font-sans"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={smsSending}
+                      className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {smsSending ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Dispatching SMS Broadcast...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>
+                            Send SMS Broadcast (
+                            {smsRecipientMode === 'test'
+                              ? '1 Test'
+                              : smsRecipientMode === 'all'
+                              ? `${(data?.users || []).filter((u: any) => u.role === 'RIDER').length} Riders`
+                              : `${smsSelectedRiderIds.length} Selected`}
+                            )
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Panel: Recent SMS Delivery Audit Trail */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl shadow-xl overflow-hidden">
+              <div className="p-4 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-sm text-white flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-emerald-400" /> Recent SMS Gateway Logs
+                  </h3>
+                  <p className="text-[11px] text-slate-400">Full audit trail of overdue notices, payment alerts, and broadcasts</p>
+                </div>
+                <span className="text-xs text-slate-400 font-mono">Recent Logs</span>
+              </div>
+
+              <div className="overflow-x-auto max-h-72 overflow-y-auto">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 uppercase tracking-wider text-[10px] font-bold sticky top-0 z-10 border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Time</th>
+                      <th className="p-3">Recipient</th>
+                      <th className="p-3">Purpose</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Message</th>
+                      <th className="p-3">Batch / Error</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                    {((data as any)?.smsLogs || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-8 text-center text-slate-500 italic">
+                          No SMS messages logged yet. Use the Quick Test bar above to send your first message!
+                        </td>
+                      </tr>
+                    ) : (
+                      ((data as any)?.smsLogs || []).map((log: any) => (
+                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3 text-[10px] text-slate-400 whitespace-nowrap">
+                            {new Date(log.createdAt).toLocaleString()}
+                          </td>
+                          <td className="p-3">
+                            <span className="font-mono text-white font-bold">{log.recipient}</span>
+                            {log.recipientName && (
+                              <span className="text-[10px] text-slate-400 ml-1.5">({log.recipientName})</span>
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase ${
+                                log.purpose === 'OVERDUE'
+                                  ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                  : log.purpose === 'PAYMENT'
+                                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                  : log.purpose === 'TEST'
+                                  ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+                                  : 'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                              }`}
+                            >
+                              {log.purpose}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                                log.status === 'SENT'
+                                  ? 'bg-emerald-500/10 text-emerald-400'
+                                  : 'bg-rose-500/10 text-rose-400'
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-300 text-[11px] max-w-xs truncate" title={log.message}>
+                            {log.message}
+                          </td>
+                          <td className="p-3 font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
+                            {log.error ? <span className="text-rose-400">{log.error}</span> : log.batchId || 'N/A'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

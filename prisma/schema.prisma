@@ -73,6 +73,9 @@ model User {
   twoFactorCode      String?
   twoFactorExpiresAt DateTime?
 
+  // SMS Configuration: Whether this rider receives SMS upon payment recording
+  receivePaymentSms  Boolean       @default(false)
+
   createdAt          DateTime      @default(now())
   agreementsAsHirer  Agreement[]   @relation("HirerAgreements")
 
@@ -309,4 +312,21 @@ enum WalletChangeStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model SmsLog {
+  id            String    @id @default(cuid())
+  recipient     String
+  recipientName String?
+  message       String
+  senderId      String
+  purpose       String    // "OVERDUE" | "PAYMENT" | "BROADCAST" | "TEST"
+  status        String    // "SENT" | "FAILED"
+  batchId       String?
+  error         String?
+  createdAt     DateTime  @default(now())
+
+  @@index([recipient])
+  @@index([purpose])
+  @@index([createdAt])
 }

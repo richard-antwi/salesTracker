@@ -137,7 +137,12 @@ export async function POST(request: Request) {
       
       // Send receipt notification
       await notifications.sendPaymentReceived(
-        { name: agreement.hirer.name, phone: agreement.hirer.phone, email: agreement.hirer.email },
+        {
+          name: agreement.hirer.name,
+          phone: agreement.hirer.phone,
+          email: agreement.hirer.email,
+          receivePaymentSms: agreement.hirer.receivePaymentSms,
+        },
         { amount: payment.amount.toNumber(), channel: 'MOMO' },
         summary.balanceRemaining
       );

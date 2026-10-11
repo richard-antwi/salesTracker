@@ -23,8 +23,11 @@ export const CONFIG = {
   RESEND_API_KEY: process.env.RESEND_API_KEY || '',
   EMAIL_FROM_ADDRESS: process.env.EMAIL_FROM_ADDRESS || 'Work & Pay <onboarding@resend.dev>',
 
-  // SMS Configuration (Africa's Talking Stub)
+  // SMS Configuration (SMSOnlineGH primary, Africa's Talking secondary)
+  SMS_PROVIDER: process.env.SMS_PROVIDER || 'SMSONLINEGH', // 'SMSONLINEGH' | 'AFRICASTALKING'
   SMS_ENABLED: process.env.SMS_ENABLED === 'true',
+  SMSONLINEGH_API_KEY: process.env.SMSONLINEGH_API_KEY || '',
+  SMSONLINEGH_SENDER_ID: process.env.SMSONLINEGH_SENDER_ID || 'WorkAndPay',
   AFRICAS_TALKING_API_KEY: process.env.AFRICAS_TALKING_API_KEY || '',
   AFRICAS_TALKING_USERNAME: process.env.AFRICAS_TALKING_USERNAME || 'sandbox',
 
